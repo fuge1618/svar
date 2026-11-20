@@ -166,6 +166,9 @@ input[type=email]{width:100%;padding:12px;border:1px solid var(--line);border-ra
 .pal{display:flex;align-items:center;gap:10px;padding:12px 10px;border:2px solid;border-radius:10px;font-weight:500;min-height:54px;text-align:left;font-size:15px}
 .pal .chips{display:flex;gap:3px;flex:none}
 .pal .chips i{width:12px;height:24px;border-radius:3px;display:block}
+.mailbox{display:flex;align-items:center;gap:10px;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:6px 6px 6px 12px;font-size:14px}
+.mailbox span{overflow-wrap:anywhere}
+.mailbox .btn{min-height:40px;padding:8px 12px;flex:none}
 </style>
 </head>
 <body>
@@ -180,6 +183,7 @@ input[type=email]{width:100%;padding:12px;border:1px solid var(--line);border-ra
    Modo profesional (sin link): biblioteca de formularios y armado del link.
    Modo paciente (link con #k=codigo): responde y envía sus respuestas. */
 const JSPDF_URL="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+const XLSX_URL="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js";
 const MARK='<svg viewBox="0 0 32 32" fill="none" stroke-width="3.2" stroke-linecap="square" aria-hidden="true"><path d="M6 17l7 7" stroke="var(--accent)"/><path d="M13 24L26 8" stroke="var(--ink)"/></svg>';
 const BASE=location.origin+location.pathname;
 const API="https://api.fuge1618.com";
@@ -397,10 +401,12 @@ function vTablero(){
     ${withAns.length?`<section class="sec"><h2>Enviar</h2><div class="pad stack">
       <p class="note">${P.d?"Destinatario: "+esc(quien())+". ":""}Elegí qué cuestionarios van.</p>
       <div class="opts" role="group" aria-label="Cuestionarios a enviar">${withAns.map(f=>`<button class="opt${isSel(f.id)?" on":""}" role="checkbox" aria-checked="${isSel(f.id)}" data-a="sel" data-f="${esc(f.id)}"><span class="mk"></span><span class="mono" style="font-weight:600;flex:1">${esc(f.code)}</span><span class="mono" style="font-size:12px;color:var(--muted)">${S.done[f.id]?"completo":count(f)+" / "+f.items.length}</span></button>`).join("")}</div>
-      ${P.e&&ch.length?`<a class="btn pri" href="${esc(mailHref(ch))}">Enviar resumen por mail${P.d?" a "+esc(P.d):""}</a><p class="note">Se abre tu mail con el resumen de pregunta y letra ya escrito para ${esc(P.e)}. Solo tenés que tocar enviar.</p>`:""}
-      ${ch.length>1?`<div class="two"><button class="btn soft seg${SEP?" on":""}" aria-pressed="${SEP}" data-a="sep" data-v="1">Un PDF por test</button><button class="btn soft seg${SEP?"":" on"}" aria-pressed="${!SEP}" data-a="sep" data-v="0">Todo en un PDF</button></div>`:""}
-      ${CAN_SHARE_FILES?`<button class="btn ${P.e?"":"pri"}" data-a="share" ${busy||!ch.length?"disabled":""}>${busy==="share"?"Armando el PDF…":"Compartir PDF con el detalle"}</button>`:""}
-      <button class="btn ${CAN_SHARE_FILES||P.e?"soft":"pri"}" data-a="pdf" ${busy||!ch.length?"disabled":""}>${busy==="save"?"Armando el PDF…":"Descargar PDF"}</button>
+      ${ch.length>1?`<div class="two"><button class="btn soft seg${SEP?" on":""}" aria-pressed="${SEP}" data-a="sep" data-v="1">Archivos por test</button><button class="btn soft seg${SEP?"":" on"}" aria-pressed="${!SEP}" data-a="sep" data-v="0">Todo junto</button></div>`:""}
+      <p class="note">Se generan dos archivos: el PDF para leer y un Excel con las mismas respuestas en tabla, para analizar.</p>
+      ${CAN_SHARE_FILES?`<button class="btn pri" data-a="share" ${busy||!ch.length?"disabled":""}>${busy==="share"?"Armando los archivos…":"Enviar PDF y Excel"}</button>`:""}
+      ${P.e&&CAN_SHARE_FILES?`<div class="mailbox"><span class="mono">${esc(P.e)}</span><button class="btn soft" data-a="cpmail">Copiar mail</button></div><p class="note">Al tocar Enviar elegís la app (mail, WhatsApp). Si es por mail, pegá esta dirección como destinatario.</p>`:""}
+      <button class="btn ${CAN_SHARE_FILES?"soft":"pri"}" data-a="pdf" ${busy||!ch.length?"disabled":""}>${busy==="save"?"Armando los archivos…":"Descargar PDF y Excel"}</button>
+      ${P.e&&ch.length?`<a class="btn soft" href="${esc(mailHref(ch))}">Mandar solo un resumen por mail</a>`:""}
       <button class="btn soft" data-a="copy" ${ch.length?"":"disabled"}>Copiar como texto</button>
       ${flash?`<div class="msg" role="status">${flash}</div>`:""}
       ${V.txt?`<textarea id="txt-out" readonly aria-label="Respuestas en texto">${esc(V.txt)}</textarea>`:""}
@@ -483,8 +489,9 @@ const ACT={
   wipe2(){S={perfil:{nombre:"",nac:"",sexo:""},resp:{},done:{}};save();go("inicio");},
   sel(el){SEL[el.dataset.f]=!isSel(el.dataset.f);flash="";render(false);},
   sep(el){SEP=el.dataset.v==="1";render(false);},
-  pdf(){exportPdf("save");},
-  share(){exportPdf("share");},
+  pdf(){exportFiles("save");},
+  share(){exportFiles("share");},
+  async cpmail(){const ok=await copyText(P.e);flash=ok?"Mail copiado.":"No se pudo copiar. Mantené apretada la dirección para copiarla.";render(false);},
   async copy(){const t=makeText(chosen()),ok=await copyText(t);
     flash=ok?"Copiado. Pegalo en WhatsApp, un mail o donde quieras.":"No se pudo copiar solo. Seleccioná el texto de abajo y copialo.";V.txt=ok?"":t;render(false);},
   /* profesional */
@@ -547,17 +554,62 @@ function makeText(fs){const p=S.perfil,L=["Respuestas de cuestionarios"+(P&&P.d?
   return L.join("\n");}
 function loadScript(src){return new Promise((ok,no)=>{if(document.querySelector('script[data-src="'+src+'"]'))return ok();const s=document.createElement("script");s.src=src;s.dataset.src=src;s.onload=()=>ok();s.onerror=()=>{s.remove();no(new Error("script"));};document.head.appendChild(s);});}
 function pdfName(fs){return fs.map(f=>f.code).join(" ").replace(/[^\w\s-]/g,"").slice(0,80)+(S.perfil.nombre?" - "+S.perfil.nombre.replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g,""):"")+" - "+today()+".pdf";}
-async function exportPdf(mode){
+const XLSX_MIME="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+async function exportFiles(mode){
   const fs=chosen();if(!fs.length)return;busy=mode;flash="";render(false);
-  try{const groups=SEP?fs.map(f=>[f]):[fs],files=[];
-    for(const g of groups)files.push({name:pdfName(g),blob:await makePdf(g)});
+  try{const groups=SEP?fs.map(f=>[f]):[fs],pdfs=[],xls=[];
+    for(const g of groups){const base=pdfName(g).replace(/\.pdf$/,"");pdfs.push({name:base+".pdf",blob:await makePdf(g),type:"application/pdf"});xls.push({name:base+".xlsx",blob:await makeXlsx(g),type:XLSX_MIME});}
+    const F=a=>a.map(x=>new File([x.blob],x.name,{type:x.type})),title="Respuestas "+fs.map(f=>f.code).join(", ")+(S.perfil.nombre?" - "+S.perfil.nombre:"");
+    const saveAll=async a=>{let ok=0;for(const x of a){if(await saveFile(x.name,x.blob)!=="saved")break;ok++;await new Promise(r=>setTimeout(r,350));}return ok;};
     if(mode==="share"){
-      try{await navigator.share({files:files.map(x=>new File([x.blob],x.name,{type:"application/pdf"})),title:"Respuestas "+fs.map(f=>f.code).join(", ")});flash="Listo, lo pasaste a la app que elegiste.";}
-      catch(e){flash=e&&e.name==="AbortError"?"No se compartió. Podés intentarlo de nuevo.":"Este teléfono no dejó compartir. Usá Descargar PDF y mandalo desde tus archivos.";}
-    }else{let ok=0;for(const x of files){if(await saveFile(x.name,x.blob)!=="saved")break;ok++;if(files.length>1)await new Promise(r=>setTimeout(r,350));}
-      flash=ok===files.length?(ok===1?"PDF listo. Buscalo en tus descargas.":ok+" PDF listos, uno por test. Buscalos en tus descargas."):"No se pudo descargar. Usá Copiar como texto.";}
-  }catch(e){flash="No se pudo armar el PDF. Revisá la conexión e intentá de nuevo, o usá Copiar como texto.";}
+      const all=pdfs.concat(xls);let files=null,rest=[];
+      try{if(navigator.canShare({files:F(all)}))files=all;else if(navigator.canShare({files:F(pdfs)})){files=pdfs;rest=xls;}}catch(e){}
+      if(!files){const ok=await saveAll(all);flash="Este teléfono no deja compartir estos archivos. Se descargaron "+ok+" de "+all.length+": mandalos desde tus descargas.";}
+      else{try{await navigator.share({files:F(files),title,text:title+(P&&P.d?"\nPara: "+quien():"")});
+          if(rest.length){const ok=await saveAll(rest);flash="Compartiste el PDF. El Excel no se puede compartir directo desde este teléfono: se descargó ("+ok+" de "+rest.length+") para que lo adjuntes vos.";}
+          else flash="Listo, pasaste los archivos a la app que elegiste.";}
+        catch(e){flash=e&&e.name==="AbortError"?"No se envió. Podés intentarlo de nuevo.":"Este teléfono no dejó compartir. Usá Descargar PDF y Excel y mandalos desde tus archivos.";}}
+    }else{const all=pdfs.concat(xls),ok=await saveAll(all);
+      flash=ok===all.length?ok+" archivos listos (PDF y Excel). Buscalos en tus descargas.":"Se descargaron "+ok+" de "+all.length+". Probá de nuevo o usá Copiar como texto.";}
+  }catch(e){flash="No se pudieron armar los archivos. Revisá la conexión e intentá de nuevo.";}
   busy="";render(false);
+}
+/* Excel pensado para analizar: una fila por respuesta, más una hoja por test con las respuestas en una sola fila. */
+async function makeXlsx(fs){
+  await loadScript(XLSX_URL);const wb=new window.ExcelJS.Workbook();wb.creator="Svar by fuge1618";wb.created=new Date();
+  const p=S.perfil,D=s=>{if(!s)return null;const a=String(s).split("-").map(Number);return a.length===3&&a.every(Number.isFinite)?new Date(Date.UTC(a[0],a[1]-1,a[2])):null;};
+  const num=v=>/^\d+$/.test(String(v))?Number(v):String(v),DF="dd/mm/yyyy",INK="FF1A1A19",ACC="FFFF8000",SOFT="FFF1F0EC";
+  const head=(ws,row)=>{const r=ws.getRow(row||1);r.font={bold:true,color:{argb:"FFFFFFFF"}};r.height=22;r.alignment={vertical:"middle"};r.eachCell(c=>{c.fill={type:"pattern",pattern:"solid",fgColor:{argb:INK}};});};
+  const table=(ws)=>{head(ws,1);ws.views=[{state:"frozen",ySplit:1}];ws.autoFilter={from:{row:1,column:1},to:{row:1,column:ws.columnCount}};};
+  const pos=(f,i)=>{const r=R(f,i);if(!has(f,i))return null;return Array.isArray(r)?r.slice().sort((a,b)=>a-b).map(k=>k+1).join(","):r+1;};
+  const txt=(f,i)=>{const os=opts(f,f.items[i]),r=R(f,i);if(!has(f,i))return null;return Array.isArray(r)?r.slice().sort((a,b)=>a-b).map(k=>os[k]).join(" | "):os[r];};
+  /* Datos */
+  const d=wb.addWorksheet("Datos");d.columns=[{width:26},{width:46},{width:14},{width:14},{width:16}];
+  d.addRow(["Respuestas de cuestionarios"]).font={bold:true,size:14};d.addRow(["Sin puntaje ni interpretación. Generado con Svar by fuge1618."]).font={color:{argb:"FF63615C"}};d.addRow([]);
+  [["Paciente",p.nombre||""],["Fecha de nacimiento",D(p.nac)],["Sexo",p.sexo||""],["Profesional",(P&&P.d)||""],["Matrícula",(P&&P.m)||""],["Mail del profesional",(P&&P.e)||""],["Fecha del informe",D(today())]]
+    .forEach(x=>{const r=d.addRow(x);r.getCell(1).font={bold:true};r.getCell(2).alignment={horizontal:"left"};if(x[1] instanceof Date)r.getCell(2).numFmt=DF;});
+  d.addRow([]);const hr=d.addRow(["Cuestionario","Preguntas","Respondidas","Completo","Fecha"]);head(d,hr.number);
+  fs.forEach(f=>{const r=d.addRow([f.code,f.items.length,count(f),S.done[f.id]?"SI":"NO",D(S.done[f.id])]);r.getCell(5).numFmt=DF;});
+  /* Respuestas: formato largo */
+  const a=wb.addWorksheet("Respuestas");
+  a.columns=[{header:"paciente",key:"pa",width:26},{header:"fecha_nacimiento",key:"fn",width:17,style:{numFmt:DF}},{header:"sexo",key:"sx",width:8},{header:"cuestionario",key:"cu",width:14},{header:"fecha_completado",key:"fc",width:17,style:{numFmt:DF}},
+    {header:"n_pregunta",key:"n",width:12},{header:"pregunta",key:"q",width:70,style:{alignment:{wrapText:true,vertical:"top"}}},{header:"respuesta_letra",key:"l",width:16},{header:"respuesta_numero",key:"k",width:17},{header:"respuesta_texto",key:"t",width:38,style:{alignment:{wrapText:true,vertical:"top"}}}];
+  fs.forEach(f=>f.items.forEach((it,i)=>a.addRow({pa:p.nombre||"",fn:D(p.nac),sx:p.sexo||"",cu:f.code,fc:D(S.done[f.id]),n:num(it.n),q:it.t,l:letters(f,i)||null,k:pos(f,i),t:txt(f,i)})));
+  table(a);
+  /* Opciones: qué significa cada letra y número */
+  const o=wb.addWorksheet("Opciones");
+  o.columns=[{header:"cuestionario",key:"cu",width:14},{header:"n_pregunta",key:"n",width:12},{header:"letra",key:"l",width:8},{header:"numero",key:"k",width:9},{header:"texto",key:"t",width:60,style:{alignment:{wrapText:true,vertical:"top"}}}];
+  fs.forEach(f=>{if(f.scale)f.scale.forEach((x,k)=>o.addRow({cu:f.code,n:"todas",l:LT(k),k:k+1,t:x}));
+    f.items.forEach(it=>{if(it.o)it.o.forEach((x,k)=>o.addRow({cu:f.code,n:num(it.n),l:LT(k),k:k+1,t:x}));});});
+  table(o);
+  /* Una hoja por test, con todas las respuestas en una fila */
+  const used={Datos:1,Respuestas:1,Opciones:1};
+  fs.forEach(f=>{let name=(String(f.code).replace(/[\\\/\?\*\[\]:]/g," ").trim().slice(0,24)||"Test")+" fila";let base=name,c=2;while(used[name]){name=base.slice(0,26)+" "+c++;}used[name]=1;
+    const w=wb.addWorksheet(name);w.columns=[{width:18}].concat(f.items.map(()=>({width:6})));
+    w.addRow(["pregunta"].concat(f.items.map(it=>num(it.n))));w.addRow(["respuesta_numero"].concat(f.items.map((_,i)=>pos(f,i))));w.addRow(["respuesta_letra"].concat(f.items.map((_,i)=>letters(f,i)||null)));
+    head(w,1);w.getColumn(1).font={bold:true};w.getRow(1).getCell(1).font={bold:true,color:{argb:"FFFFFFFF"}};w.views=[{state:"frozen",xSplit:1,ySplit:1}];
+    [2,3].forEach(n=>w.getRow(n).eachCell((c,ci)=>{if(ci>1)c.alignment={horizontal:"center"};}));});
+  return new Blob([await wb.xlsx.writeBuffer()],{type:XLSX_MIME});
 }
 async function makePdf(fs){
   await loadScript(JSPDF_URL);const d=new window.jspdf.jsPDF({unit:"pt",format:"a4"});
