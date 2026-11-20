@@ -168,10 +168,11 @@ input[type=email]{width:100%;padding:12px;border:1px solid var(--line);border-ra
 "use strict";
 /* Svar by fuge1618. Todo corre en el navegador: no hay servidor ni base de datos.
    Modo profesional (sin link): biblioteca de formularios y armado del link.
-   Modo paciente (link con #s=...): responde y envía sus respuestas. */
+   Modo paciente (link con #k=codigo): responde y envía sus respuestas. */
 const JSPDF_URL="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
 const MARK='<svg viewBox="0 0 32 32" fill="none" stroke-width="3.2" stroke-linecap="square" aria-hidden="true"><path d="M6 17l7 7" stroke="var(--accent)"/><path d="M13 24L26 8" stroke="var(--ink)"/></svg>';
 const BASE=location.origin+location.pathname;
+const API="https://api.fuge1618.com";
 
 /* ---------- estado ---------- */
 let MODE="pro",P=null,KEY="",TEMA="auto",storageOk=true;
@@ -238,14 +239,14 @@ function vPro(){
     <section class="sec"><h2>Link para el paciente</h2><div class="pad stack">
       <p class="field"><label for="p-mail">Tu mail, para recibir las respuestas</label><input type="email" id="p-mail" inputmode="email" autocomplete="email" value="${esc(PRO.mail)}" placeholder="nombre@ejemplo.com"></p>
       <p class="field"><label for="p-nombre">Tu nombre, como lo ve el paciente (opcional)</label><input type="text" id="p-nombre" value="${esc(PRO.nombre)}"></p>
-      <button class="btn pri" data-a="mklink" ${n?"":"disabled"}>${n?"Crear link con "+n+(n===1?" cuestionario":" cuestionarios"):"Marcá al menos un cuestionario"}</button>
+      <button class="btn pri" data-a="mklink" ${n&&!busy?"":"disabled"}>${busy==="link"?"Creando el link…":n?"Crear link con "+n+(n===1?" cuestionario":" cuestionarios"):"Marcá al menos un cuestionario"}</button>
       ${flash?`<div class="msg" role="status">${flash}</div>`:""}
-      ${L?`<textarea id="p-link" readonly aria-label="Link para el paciente" style="min-height:96px;word-break:break-all">${esc(L)}</textarea>
-        <p class="note">${L.length.toLocaleString("es-AR")} caracteres.${L.length>6000?" Es un link largo: probalo antes de mandarlo, o creá un link por cuestionario.":""}</p>
+      ${L?(V.short?`<input type="text" id="p-link" readonly aria-label="Link para el paciente" class="mono" value="${esc(L)}">`
+        :`<textarea id="p-link" readonly aria-label="Link para el paciente" style="min-height:96px;word-break:break-all">${esc(L)}</textarea>`)+`
         <div class="two"><button class="btn" data-a="cplink">Copiar link</button>${CAN_SHARE?'<button class="btn" data-a="shlink">Compartir</button>':'<button class="btn soft" data-a="openlink">Probar acá</button>'}</div>
         ${CAN_SHARE?'<button class="btn soft" data-a="openlink">Probar en este dispositivo</button>':""}`:""}
     </div></section>
-    <p class="note">Los formularios viajan dentro del link. Las respuestas quedan en el teléfono del paciente hasta que él te las envía por mail o te comparte el PDF. Svar no guarda nada en ningún servidor.</p>
+    <p class="note">Para que el link sea corto, los formularios en blanco que mandás se guardan en el servidor de fuge1618, junto con tu mail y tu nombre. Las respuestas no pasan por ahí: quedan en el teléfono del paciente hasta que él te las envía por mail o te comparte el PDF.</p>
   </main>`;
 }
 const PROMPT=`Vas a transcribir un cuestionario de opción múltiple (de los que se completan tildando una respuesta) para mostrarlo en una app.
@@ -384,8 +385,9 @@ function vDatos(){
     </div></section>
   </main>`;
 }
+function vSinRed(){return brand()+`<main><h1 class="big">No se pudieron cargar los cuestionarios</h1><p style="margin:0">Revisá tu conexión a internet y volvé a intentar.</p><button class="btn pri" data-a="retry">Reintentar</button></main>`;}
 function vRoto(){return brand()+`<main><h1 class="big">Este link está incompleto</h1><p style="margin:0">Puede haberse cortado al copiarlo. Pedile a tu profesional que te lo mande de nuevo.</p><button class="btn soft" data-a="topro">Soy profesional: abrir Svar</button></main>`;}
-const VIEWS={pro:vPro,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto};
+const VIEWS={pro:vPro,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed};
 function render(top){document.getElementById("app").innerHTML=VIEWS[V.name]();if(top)window.scrollTo(0,0);}
 function go(name,extra){V=Object.assign({name},extra||{});flash="";render(true);}
 const home=()=>MODE==="pac"?"inicio":"pro";
@@ -422,8 +424,14 @@ const ACT={
   psel(el){PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.confirm=false;flash="";render(false);},
   async mklink(){const fs=picked();if(!fs.length)return;const mail=PRO.mail.trim();
     if(mail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)){flash="Revisá el mail: no parece una dirección válida.";V.link="";render(false);return;}
-    V.link=BASE+"#s="+await pack({e:mail,d:PRO.nombre.trim(),f:fs.map(toWire)});
-    flash=mail?"":"Sin tu mail, el paciente va a poder compartirte el PDF pero no va a tener el botón de enviar por mail.";save();render(false);},
+    busy="link";flash="";V.link="";render(false);
+    const packed=await pack({e:mail,d:PRO.nombre.trim(),f:fs.map(toWire)});let link="",why="";
+    try{const r=await fetch(API+"/f",{method:"POST",body:packed});
+      if(r.ok){const id=(await r.text()).trim();if(/^[a-z0-9]{8}$/.test(id))link=BASE+"#k="+id;}else why=r.status===429?"limite":"";}catch(e){}
+    busy="";V.short=!!link;V.link=link||BASE+"#s="+packed;
+    flash=link?(mail?"":"Sin tu mail, el paciente va a poder compartirte el PDF pero no va a tener el botón de enviar por mail.")
+      :(why==="limite"?"Se crearon muchos links hoy desde esta conexión. ":"No se pudo conectar para crear el link corto. ")+"Este link largo funciona igual; para el corto, probá de nuevo más tarde.";
+    save();render(false);},
   async cplink(){const ok=await copyText(V.link);flash=ok?"Link copiado. Pegalo en el chat con tu paciente.":"No se pudo copiar solo. Mantené apretado el link de arriba y copialo.";render(false);},
   async shlink(){try{await navigator.share({title:"Cuestionarios",text:"Te mando los cuestionarios para completar desde el celular:",url:V.link});}catch(e){}},
   openlink(){location.href=V.link;},
@@ -436,7 +444,8 @@ const ACT={
     draft=f;go("agregar");},
   discard(){draft=null;go("agregar");},
   keep(){draft.code=(document.getElementById("f-code").value.trim()||"Formulario").slice(0,24);addToLib([draft]);PSEL[draft.id]=true;draft=null;save();go("pro");},
-  topro(){history.replaceState(null,"",BASE);location.reload();}
+  topro(){history.replaceState(null,"",BASE);location.reload();},
+  retry(){location.reload();}
 };
 document.addEventListener("click",e=>{const el=e.target.closest("[data-a]");if(!el||el.disabled)return;const fn=ACT[el.dataset.a];if(fn)fn(el);});
 document.addEventListener("input",e=>{if(e.target.id==="p-mail"){PRO.mail=e.target.value;save();}if(e.target.id==="p-nombre"){PRO.nombre=e.target.value;save();}});
@@ -531,11 +540,14 @@ async function saveFile(filename,blob){
 /* ---------- arranque ---------- */
 (async()=>{
   TEMA=ls.get("svar.tema")||"auto";applyTheme();
-  const m=location.hash.match(/^#s=([\w-]+)/);let roto=false;
-  if(m){try{const o=await unpack(m[1]);P={e:String(o.e||""),d:String(o.d||""),forms:(o.f||[]).map(fromWire).filter(f=>f.items.length)};if(!P.forms.length)throw 0;
-      MODE="pac";KEY="svar.p."+hash(m[1]);const s=ls.get(KEY);if(s&&typeof s==="object")S=Object.assign(S,s);}catch(e){roto=true;}}
+  const mk=location.hash.match(/^#k=([a-z0-9]{8})/),ms=location.hash.match(/^#s=([\w-]+)/);let roto=false,sinred=false,packed=null,sid="";
+  if(mk){sid=mk[1];packed=ls.get("svar.k."+sid);
+    if(typeof packed!=="string"){packed=null;try{const r=await fetch(API+"/f/"+sid);if(r.ok){packed=(await r.text()).trim();ls.set("svar.k."+sid,packed);}else if(r.status===404)roto=true;else sinred=true;}catch(e){sinred=true;}}}
+  else if(ms){packed=ms[1];sid=hash(packed);}
+  if(packed){try{const o=await unpack(packed);P={e:String(o.e||""),d:String(o.d||""),forms:(o.f||[]).map(fromWire).filter(f=>f.items.length)};if(!P.forms.length)throw 0;
+      MODE="pac";KEY="svar.p."+sid;const s=ls.get(KEY);if(s&&typeof s==="object")S=Object.assign(S,s);}catch(e){roto=true;}}
   if(MODE==="pro"){const p=ls.get("svar.pro");if(p&&typeof p==="object")PRO=Object.assign(PRO,p);}
-  V={name:MODE==="pac"?"inicio":roto?"roto":"pro"};render(false);
+  V={name:MODE==="pac"?"inicio":sinred?"sinred":roto?"roto":"pro"};render(false);
   setTimeout(()=>{const s=document.getElementById("splash");if(s)s.remove();},1700);
 })();
 window.addEventListener("hashchange",()=>location.reload());
