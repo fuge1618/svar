@@ -7,6 +7,11 @@
 <meta name="theme-color" content="#E9E8E4">
 <title>Svar</title>
 <meta name="description" content="Cuestionarios, una pregunta a la vez. by fuge1618">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Svar">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke-width='3.2' stroke-linecap='square'%3E%3Crect width='32' height='32' rx='7' fill='%23E9E8E4'/%3E%3Cpath d='M6 17l7 7' stroke='%23FF8000'/%3E%3Cpath d='M13 24L26 8' stroke='%231A1A19'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -212,6 +217,14 @@ const chosen=()=>all().filter(f=>count(f)>0&&isSel(f.id));
 const picked=()=>PRO.lib.filter(f=>PSEL[f.id]);
 const CAN_SHARE_FILES=(()=>{try{return !!(navigator.share&&navigator.canShare&&navigator.canShare({files:[new File(["x"],"x.pdf",{type:"application/pdf"})]}));}catch(e){return false;}})();
 const CAN_SHARE=!!navigator.share;
+let installEvt=null;
+const STANDALONE=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+const IS_IOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEvt=e;if(V.name==="pro")render(false);});
+window.addEventListener("appinstalled",()=>{installEvt=null;if(V.name==="pro")render(false);});
+const installBox=()=>STANDALONE?"":installEvt?`<section class="sec"><h2>Instalar</h2><div class="pad stack"><p class="note">Queda con su ícono, a pantalla completa, y abre aunque no haya conexión.</p><button class="btn" data-a="install">Instalar Svar en este dispositivo</button></div></section>`
+  :IS_IOS?`<section class="sec"><h2>Instalar</h2><div class="pad"><p class="note">En iPhone o iPad: abrí esta página en Safari, tocá Compartir y elegí "Agregar a inicio".</p></div></section>`
+  :`<section class="sec"><h2>Instalar</h2><div class="pad"><p class="note">Abrí el menú del navegador y elegí "Instalar app" o "Agregar a la pantalla principal".</p></div></section>`;
 
 /* ---------- link: los formularios viajan comprimidos dentro del link ---------- */
 const b64u=u=>{let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");};
@@ -252,6 +265,7 @@ function vPro(){
         <div class="two"><button class="btn" data-a="cplink">Copiar link</button>${CAN_SHARE?'<button class="btn" data-a="shlink">Compartir</button>':'<button class="btn soft" data-a="openlink">Probar acá</button>'}</div>
         ${CAN_SHARE?'<button class="btn soft" data-a="openlink">Probar en este dispositivo</button>':""}`:""}
     </div></section>
+    ${installBox()}
     <p class="note">Para que el link sea corto, los formularios en blanco que mandás se guardan en el servidor de fuge1618, junto con los datos de tu perfil. Las respuestas no pasan por ahí: quedan en el teléfono del paciente hasta que él te las envía por mail o te comparte el PDF.</p>
   </main>`;
 }
@@ -470,6 +484,7 @@ const ACT={
     draft=f;go("agregar");},
   discard(){draft=null;go("agregar");},
   keep(){draft.code=(document.getElementById("f-code").value.trim()||"Formulario").slice(0,24);addToLib([draft]);PSEL[draft.id]=true;draft=null;save();go("pro");},
+  async install(){if(!installEvt)return;const e=installEvt;installEvt=null;try{e.prompt();await e.userChoice;}catch(x){}render(false);},
   topro(){history.replaceState(null,"",BASE);location.reload();},
   retry(){location.reload();}
 };
@@ -577,6 +592,7 @@ async function saveFile(filename,blob){
   setTimeout(()=>{const s=document.getElementById("splash");if(s)s.remove();},1700);
 })();
 window.addEventListener("hashchange",()=>location.reload());
+if("serviceWorker" in navigator)window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{});});
 </script>
 </body>
 </html>
