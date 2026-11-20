@@ -161,6 +161,11 @@ textarea{width:100%;min-height:180px;font-family:var(--mono);font-size:12px;bord
 a.btn{display:block;text-decoration:none;color:var(--ink)}
 a.btn.pri{color:var(--on-accent)}
 input[type=email]{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-height:48px}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pals{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pal{display:flex;align-items:center;gap:10px;padding:12px 10px;border:2px solid;border-radius:10px;font-weight:500;min-height:54px;text-align:left;font-size:15px}
+.pal .chips{display:flex;gap:3px;flex:none}
+.pal .chips i{width:12px;height:24px;border-radius:3px;display:block}
 </style>
 </head>
 <body>
@@ -180,7 +185,9 @@ const BASE=location.origin+location.pathname;
 const API="https://api.fuge1618.com";
 
 /* ---------- estado ---------- */
-let MODE="pro",P=null,KEY="",TEMA="auto",storageOk=true;
+/* Paletas estándar de fuge1618: fondo, superficie, tinta, tinta suave, línea, acento, texto sobre acento. Mismo acento en claro y oscuro. */
+const PALETAS=[["Firma",["#E9E8E4","#F6F5F2","#1A1A19","#63615C","#D0CEC7","#FF8000","#1A1A19"],["#131312","#1D1D1B","#ECEBE6","#9D9B94","#34332F","#FF8000","#1A1A19"]],["Grafito",["#E5E7EA","#F4F5F7","#17191C","#5E636A","#CACDD3","#7088A3","#0F1318"],["#101214","#1A1D20","#E8EAED","#969CA5","#2E3338","#7088A3","#0F1318"]],["Tierra",["#E8E1D0","#F5F0E3","#22201A","#6A6455","#D3C9B3","#8C9E44","#16180B"],["#17160F","#211F16","#EDE8DA","#A29C8A","#39362A","#8C9E44","#16180B"]],["Náutico",["#E7E0D0","#F5F0E4","#14233B","#56627A","#CFC6B1","#D63A2F","#FFFFFF"],["#0D1625","#162236","#EDE7D8","#93A0B8","#27364F","#D63A2F","#FFFFFF"]],["Oliva",["#E2E7D8","#F1F4EA","#1C2118","#5C6654","#C8D0BA","#7BB04A","#10190A"],["#11150E","#1A2016","#E6ECDD","#97A38C","#2D3626","#7BB04A","#10190A"]],["Vino",["#EDE3E2","#F8F1F0","#24161A","#6E5A5E","#DAC8C8","#B32A50","#FFFFFF"],["#190E12","#25161B","#F0E3E4","#AE959A","#3D262D","#B32A50","#FFFFFF"]],["Cielo",["#DAE7F2","#EDF4FA","#18242F","#566777","#BDCFDE","#5B9BE3","#0B1722"],["#0E1720","#17222D","#E3EDF5","#8FA2B3","#283746","#5B9BE3","#0B1722"]],["Hortensia",["#E3E0F2","#F3F1FA","#201C33","#615C7C","#CAC5E2","#9685EA","#120E26"],["#13111E","#1D1A2C","#EAE7F6","#9C97B8","#302C47","#9685EA","#120E26"]],["Durazno",["#F4E2D6","#FBF2EC","#2B1D17","#76605A","#E4CCBD","#F08C6C","#2A130D"],["#1B130F","#271C17","#F4E7DF","#B39C92","#3F2E27","#F08C6C","#2A130D"]],["Menta",["#D8EDE5","#EDF8F3","#14251F","#50695F","#B8D8CC","#45B894","#06201A"],["#0D1814","#15241F","#DFF1EA","#8BA79C","#253A32","#45B894","#06201A"]]];
+let MODE="pro",P=null,KEY="",TEMA="auto",PAL="",storageOk=true;
 let PRO={lib:[],mail:"",nombre:"",mat:""};
 let S={perfil:{nombre:"",nac:"",sexo:""},resp:{},done:{}};
 let V={name:"pro"},draft=null,busy="",flash="";
@@ -206,7 +213,13 @@ function letters(f,i){const r=R(f,i);if(!has(f,i))return"";return Array.isArray(
 function answerText(f,i){const os=opts(f,f.items[i]),r=R(f,i);if(!has(f,i))return"";
   const one=k=>LT(k)+" · "+(os[k]==null?"":os[k]);
   return Array.isArray(r)?r.slice().sort((a,b)=>a-b).map(one).join("; "):one(r);}
-function applyTheme(){const r=document.documentElement;if(TEMA==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",TEMA);}
+function isDark(){return TEMA==="dark"||(TEMA==="auto"&&matchMedia("(prefers-color-scheme:dark)").matches);}
+function applyTheme(){const r=document.documentElement;if(TEMA==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",TEMA);
+  const p=PALETAS.find(x=>x[0]===PAL)||PALETAS[0],v=(t,ok,cs)=>`--bg:${t[0]};--surface:${t[1]};--ink:${t[2]};--muted:${t[3]};--line:${t[4]};--accent:${t[5]};--on-accent:${t[6]};--ok:${ok};color-scheme:${cs}`;
+  const L=v(p[1],"#2C7A4B","light"),D=v(p[2],"#74C391","dark");
+  let st=document.getElementById("pal");if(!st){st=document.createElement("style");st.id="pal";document.head.appendChild(st);}
+  st.textContent=`:root{${L}}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${D}}}:root[data-theme="dark"]{${D}}`;
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=(isDark()?p[2]:p[1])[0];}
 const MAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const profOk=()=>!!(PRO.nombre||"").trim()&&MAIL_RE.test((PRO.mail||"").trim());
 const datosOk=()=>{const p=S.perfil||{};return !!((p.nombre||"").trim()&&p.nac&&(p.sexo||"").trim());};
@@ -238,7 +251,7 @@ const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i)
 
 /* ---------- pantallas comunes ---------- */
 const brand=sub=>`<div class="brand">${MARK}<div><div class="name">Svar</div><div class="by">by fuge1618</div></div><span class="sp"></span>
-  <button class="icon" data-a="tema" aria-label="Cambiar entre modo claro y oscuro" title="Claro / oscuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 000 16z" fill="currentColor"/></svg></button></div>`;
+  <button class="icon" data-a="go" data-v="config" aria-label="Configuración" title="Configuración"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h8M18 7h2M4 17h2M12 17h8"/><circle cx="15" cy="7" r="2.6"/><circle cx="9" cy="17" r="2.6"/></svg></button></div>`;
 const noStore=()=>storageOk?"":'<div class="msg">Este navegador no deja guardar datos. Si cerrás la página se pierde lo cargado.</div>';
 
 /* ---------- modo profesional ---------- */
@@ -418,8 +431,19 @@ function vDatos(){
   </main>`;
 }
 function vSinRed(){return brand()+`<main><h1 class="big">No se pudieron cargar los cuestionarios</h1><p style="margin:0">Revisá tu conexión a internet y volvé a intentar.</p><button class="btn pri" data-a="retry">Reintentar</button></main>`;}
+function vConfig(){
+  const dk=isDark(),cur=PALETAS.some(p=>p[0]===PAL)?PAL:PALETAS[0][0];
+  return `<header class="bar"><button class="ghost" data-a="home">‹ Volver</button><div class="t">Configuración</div><div class="cnt"></div></header>
+  <main>
+    <section class="sec"><h2>Modo</h2><div class="pad"><div class="three">${[["auto","Automático"],["light","Claro"],["dark","Oscuro"]].map(x=>`<button class="btn soft seg${TEMA===x[0]?" on":""}" aria-pressed="${TEMA===x[0]}" data-a="modo" data-v="${x[0]}">${x[1]}</button>`).join("")}</div></div></section>
+    <section class="sec"><h2>Paleta</h2><div class="pad"><div class="pals">${PALETAS.map(p=>{const t=dk?p[2]:p[1],on=cur===p[0];
+      return `<button class="pal" aria-pressed="${on}" data-a="pal" data-v="${esc(p[0])}" style="background:${t[0]};color:${t[2]};border-color:${on?t[5]:t[4]}"><span class="chips"><i style="background:${t[1]};box-shadow:inset 0 0 0 1px ${t[4]}"></i><i style="background:${t[5]}"></i><i style="background:${t[2]}"></i></span><span>${esc(p[0])}</span>${on?'<span class="mono" style="margin-left:auto;font-size:11px">en uso</span>':""}</button>`;}).join("")}</div>
+      ${MODE==="pro"?'<p class="note" style="margin-top:12px">Los links que crees a partir de ahora llevan tu paleta: quien responde ve la app así, y puede cambiarla en su teléfono.</p>':""}</div></section>
+    ${MODE==="pro"?'<button class="btn soft" data-a="go" data-v="perfil">Editar mi perfil</button>':'<button class="btn soft" data-a="go" data-v="datos">Mis datos</button>'}
+  </main>`;
+}
 function vRoto(){return brand()+`<main><h1 class="big">Este link está incompleto</h1><p style="margin:0">Puede haberse cortado al copiarlo. Pedile a tu profesional que te lo mande de nuevo.</p><button class="btn soft" data-a="topro">Soy profesional: abrir Svar</button></main>`;}
-const VIEWS={pro:vPro,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed};
+const VIEWS={pro:vPro,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed,config:vConfig};
 function render(top){document.getElementById("app").innerHTML=VIEWS[V.name]();if(top)window.scrollTo(0,0);}
 function go(name,extra){
   if(MODE==="pac"&&!datosOk())name="datos";
@@ -444,7 +468,8 @@ const ACT={
     if(it.multi){const cur=Array.isArray(S.resp[f.id][V.i])?S.resp[f.id][V.i].slice():[];const p=cur.indexOf(k);if(p>=0)cur.splice(p,1);else cur.push(k);S.resp[f.id][V.i]=cur;sync(f);save();render(false);return;}
     S.resp[f.id][V.i]=k;sync(f);save();render(false);
     const at=V.fid+":"+V.i;clearTimeout(advT);advT=setTimeout(()=>{if(V.name==="q"&&V.fid+":"+V.i===at)next();},260);},
-  tema(){const dark=TEMA==="dark"||(TEMA==="auto"&&matchMedia("(prefers-color-scheme:dark)").matches);TEMA=dark?"light":"dark";applyTheme();ls.set("svar.tema",TEMA);},
+  modo(el){TEMA=el.dataset.v;ls.set("svar.tema",TEMA);applyTheme();render(false);},
+  pal(el){PAL=el.dataset.v;ls.set("svar.pal",PAL);applyTheme();render(false);},
   savedatos(){const first=!datosOk(),n=document.getElementById("f-nombre").value.trim(),d=document.getElementById("f-nac").value,x=document.getElementById("f-sexo").value.trim();
     S.perfil={nombre:n,nac:d,sexo:x};
     if(!n||!d||!x){flash="Completá "+[!n&&"tu nombre",!d&&"tu fecha de nacimiento",!x&&"el sexo"].filter(Boolean).join(", ")+" para seguir.";render(false);return;}
@@ -466,7 +491,7 @@ const ACT={
   psel(el){PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.confirm=false;flash="";render(false);},
   async mklink(){const fs=picked();if(!fs.length)return;if(!profOk()){go("perfil");return;}const mail=PRO.mail.trim();
     busy="link";flash="";V.link="";render(false);
-    const packed=await pack({e:mail,d:PRO.nombre.trim(),m:(PRO.mat||"").trim(),f:fs.map(toWire)});let link="",why="";
+    const packed=await pack({e:mail,d:PRO.nombre.trim(),m:(PRO.mat||"").trim(),p:PAL||"",f:fs.map(toWire)});let link="",why="";
     try{const r=await fetch(API+"/f",{method:"POST",body:packed});
       if(r.ok){const id=(await r.text()).trim();if(/^[a-z0-9]{8}$/.test(id))link=BASE+"#k="+id;}else why=r.status===429?"limite":"";}catch(e){}
     busy="";V.short=!!link;V.link=link||BASE+"#s="+packed;
@@ -580,13 +605,14 @@ async function saveFile(filename,blob){
 
 /* ---------- arranque ---------- */
 (async()=>{
-  TEMA=ls.get("svar.tema")||"auto";applyTheme();
+  TEMA=ls.get("svar.tema")||"auto";PAL=ls.get("svar.pal")||"";applyTheme();
   const mk=location.hash.match(/^#k=([a-z0-9]{8})/),ms=location.hash.match(/^#s=([\w-]+)/);let roto=false,sinred=false,packed=null,sid="";
   if(mk){sid=mk[1];packed=ls.get("svar.k."+sid);
     if(typeof packed!=="string"){packed=null;try{const r=await fetch(API+"/f/"+sid);if(r.ok){packed=(await r.text()).trim();ls.set("svar.k."+sid,packed);}else if(r.status===404)roto=true;else sinred=true;}catch(e){sinred=true;}}}
   else if(ms){packed=ms[1];sid=hash(packed);}
-  if(packed){try{const o=await unpack(packed);P={e:String(o.e||""),d:String(o.d||""),m:String(o.m||""),forms:(o.f||[]).map(fromWire).filter(f=>f.items.length)};if(!P.forms.length)throw 0;
+  if(packed){try{const o=await unpack(packed);P={e:String(o.e||""),d:String(o.d||""),m:String(o.m||""),p:String(o.p||""),forms:(o.f||[]).map(fromWire).filter(f=>f.items.length)};if(!P.forms.length)throw 0;
       MODE="pac";KEY="svar.p."+sid;const s=ls.get(KEY);if(s&&typeof s==="object")S=Object.assign(S,s);}catch(e){roto=true;}}
+  if(MODE==="pac"&&!PAL&&P.p){PAL=P.p;applyTheme();}
   if(MODE==="pro"){const p=ls.get("svar.pro");if(p&&typeof p==="object")PRO=Object.assign(PRO,p);}
   V={name:MODE==="pac"?(datosOk()?"inicio":"datos"):sinred?"sinred":roto?"roto":profOk()?"pro":"perfil"};render(false);
   setTimeout(()=>{const s=document.getElementById("splash");if(s)s.remove();},1700);
