@@ -176,7 +176,7 @@ const API="https://api.fuge1618.com";
 
 /* ---------- estado ---------- */
 let MODE="pro",P=null,KEY="",TEMA="auto",storageOk=true;
-let PRO={lib:[],mail:"",nombre:""};
+let PRO={lib:[],mail:"",nombre:"",mat:""};
 let S={perfil:{nombre:"",nac:"",sexo:""},resp:{},done:{}};
 let V={name:"pro"},draft=null,busy="",flash="";
 const SEL={},PSEL={};let SEP=true;
@@ -202,6 +202,11 @@ function answerText(f,i){const os=opts(f,f.items[i]),r=R(f,i);if(!has(f,i))retur
   const one=k=>LT(k)+" · "+(os[k]==null?"":os[k]);
   return Array.isArray(r)?r.slice().sort((a,b)=>a-b).map(one).join("; "):one(r);}
 function applyTheme(){const r=document.documentElement;if(TEMA==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",TEMA);}
+const MAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const profOk=()=>!!(PRO.nombre||"").trim()&&MAIL_RE.test((PRO.mail||"").trim());
+const datosOk=()=>{const p=S.perfil||{};return !!((p.nombre||"").trim()&&p.nac&&(p.sexo||"").trim());};
+const quien=()=>P?P.d+(P.m?" · Matrícula "+P.m:""):"";
+const sender=()=>P&&P.d?`<section class="sec"><h2>Enviado por</h2><div class="pad"><div style="font-weight:600;font-size:17px">${esc(P.d)}</div>${P.m?`<div class="mono" style="font-size:13px;color:var(--muted)">Matrícula ${esc(P.m)}</div>`:""}<p class="note" style="margin-top:8px">Estos cuestionarios te los envió este profesional y tus respuestas son para él${P.e?": "+esc(P.e):""}.</p></div></section>`:"";
 const isSel=id=>SEL[id]!==false;
 const chosen=()=>all().filter(f=>count(f)>0&&isSel(f.id));
 const picked=()=>PRO.lib.filter(f=>PSEL[f.id]);
@@ -237,8 +242,9 @@ function vPro(){
       ${lib.length?`<div class="two"><button class="btn soft" data-a="exportlib">Exportar biblioteca</button>${V.confirm?`<button class="btn" data-a="rm2">Sí, quitar ${n}</button>`:`<button class="btn danger" data-a="rm" ${n?"":"disabled"}>Quitar marcados</button>`}</div>`:""}
     </div></section>
     <section class="sec"><h2>Link para el paciente</h2><div class="pad stack">
-      <p class="field"><label for="p-mail">Tu mail, para recibir las respuestas</label><input type="email" id="p-mail" inputmode="email" autocomplete="email" value="${esc(PRO.mail)}" placeholder="nombre@ejemplo.com"></p>
-      <p class="field"><label for="p-nombre">Tu nombre, como lo ve el paciente (opcional)</label><input type="text" id="p-nombre" value="${esc(PRO.nombre)}"></p>
+      <dl class="datos"><dt>Profesional</dt><dd>${esc(PRO.nombre)}</dd><dt>Mail</dt><dd>${esc(PRO.mail)}</dd>${PRO.mat?`<dt>Matrícula</dt><dd>${esc(PRO.mat)}</dd>`:""}</dl>
+      <p class="note">El paciente va a ver estos datos como remitente, y las respuestas van a este mail.</p>
+      <button class="btn soft" data-a="go" data-v="perfil">Editar mi perfil</button>
       <button class="btn pri" data-a="mklink" ${n&&!busy?"":"disabled"}>${busy==="link"?"Creando el link…":n?"Crear link con "+n+(n===1?" cuestionario":" cuestionarios"):"Marcá al menos un cuestionario"}</button>
       ${flash?`<div class="msg" role="status">${flash}</div>`:""}
       ${L?(V.short?`<input type="text" id="p-link" readonly aria-label="Link para el paciente" class="mono" value="${esc(L)}">`
@@ -246,7 +252,18 @@ function vPro(){
         <div class="two"><button class="btn" data-a="cplink">Copiar link</button>${CAN_SHARE?'<button class="btn" data-a="shlink">Compartir</button>':'<button class="btn soft" data-a="openlink">Probar acá</button>'}</div>
         ${CAN_SHARE?'<button class="btn soft" data-a="openlink">Probar en este dispositivo</button>':""}`:""}
     </div></section>
-    <p class="note">Para que el link sea corto, los formularios en blanco que mandás se guardan en el servidor de fuge1618, junto con tu mail y tu nombre. Las respuestas no pasan por ahí: quedan en el teléfono del paciente hasta que él te las envía por mail o te comparte el PDF.</p>
+    <p class="note">Para que el link sea corto, los formularios en blanco que mandás se guardan en el servidor de fuge1618, junto con los datos de tu perfil. Las respuestas no pasan por ahí: quedan en el teléfono del paciente hasta que él te las envía por mail o te comparte el PDF.</p>
+  </main>`;
+}
+function vPerfil(){
+  const first=!profOk();
+  return (first?brand():`<header class="bar"><button class="ghost" data-a="home">‹ Volver</button><div class="t">Mi perfil</div><div class="cnt"></div></header>`)+`<main>
+    ${first?'<h1 class="big" style="margin-top:4px">Armá tu perfil profesional</h1><p style="margin:0">Se completa una sola vez. Cada link que mandes sale con estos datos, para que el paciente sepa quién se lo envía y a quién le llegan sus respuestas.</p>':'<p class="note">Los links que ya mandaste conservan los datos con los que fueron creados.</p>'}
+    <p class="field"><label for="pf-nombre">Nombre y apellido, como lo ve el paciente (obligatorio)</label><input type="text" id="pf-nombre" autocomplete="name" value="${esc(PRO.nombre)}" placeholder="Dr. Nombre Apellido"></p>
+    <p class="field"><label for="pf-mail">Mail donde recibís las respuestas (obligatorio)</label><input type="email" id="pf-mail" inputmode="email" autocomplete="email" value="${esc(PRO.mail)}" placeholder="nombre@ejemplo.com"></p>
+    <p class="field"><label for="pf-mat">Matrícula (opcional)</label><input type="text" id="pf-mat" value="${esc(PRO.mat)}" placeholder="M.N. 000000"></p>
+    ${flash?`<div class="msg" role="alert">${flash}</div>`:""}
+    <button class="btn pri" data-a="saveperfil">${first?"Guardar y seguir":"Guardar"}</button>
   </main>`;
 }
 const PROMPT=`Vas a transcribir un cuestionario de opción múltiple (de los que se completan tildando una respuesta) para mostrarlo en una app.
@@ -290,8 +307,9 @@ function vAgregar(){
 function vInicio(){
   const fs=all(),done=fs.filter(f=>S.done[f.id]).length,any=fs.some(f=>count(f)>0);
   return brand()+`<main>
-    <p class="lema">${P.d?"Cuestionarios que te envió "+esc(P.d)+".":"Cuestionarios, una pregunta a la vez."}</p>
+    ${P.d?"":'<p class="lema">Cuestionarios, una pregunta a la vez.</p>'}
     ${noStore()}
+    ${sender()}
     <section class="sec"><h2>Cuestionarios <span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0">${done} de ${fs.length} completos</span></h2>
     ${fs.map(f=>{const c=count(f),n=f.items.length,st=S.done[f.id]?`<span class="pill ok">Completo</span>`:c?`<span class="pill go">${c} de ${n}</span>`:`<span class="pill">Sin empezar</span>`;
       return `<button class="row" data-a="open" data-f="${esc(f.id)}"><span class="code">${esc(f.code)}</span><span class="meta">${n} preguntas<span class="mini"><i style="width:${c/n*100}%"></i></span></span>${st}<span class="chev" aria-hidden="true">›</span></button>`;}).join("")}
@@ -350,7 +368,7 @@ function vTablero(){
       <dl class="datos"><dt>Nombre</dt><dd>${esc(p.nombre)||"—"}</dd><dt>Nacimiento</dt><dd>${esc(fdate(p.nac))||"—"}</dd><dt>Sexo</dt><dd>${esc(p.sexo)||"—"}</dd></dl>
       <button class="btn soft" style="margin-top:12px;width:100%" data-a="go" data-v="datos">${p.nombre?"Editar datos":"Completar datos"}</button></div></section>
     ${withAns.length?`<section class="sec"><h2>Enviar</h2><div class="pad stack">
-      <p class="note">Elegí qué cuestionarios van.</p>
+      <p class="note">${P.d?"Destinatario: "+esc(quien())+". ":""}Elegí qué cuestionarios van.</p>
       <div class="opts" role="group" aria-label="Cuestionarios a enviar">${withAns.map(f=>`<button class="opt${isSel(f.id)?" on":""}" role="checkbox" aria-checked="${isSel(f.id)}" data-a="sel" data-f="${esc(f.id)}"><span class="mk"></span><span class="mono" style="font-weight:600;flex:1">${esc(f.code)}</span><span class="mono" style="font-size:12px;color:var(--muted)">${S.done[f.id]?"completo":count(f)+" / "+f.items.length}</span></button>`).join("")}</div>
       ${P.e&&ch.length?`<a class="btn pri" href="${esc(mailHref(ch))}">Enviar resumen por mail${P.d?" a "+esc(P.d):""}</a><p class="note">Se abre tu mail con el resumen de pregunta y letra ya escrito para ${esc(P.e)}. Solo tenés que tocar enviar.</p>`:""}
       ${ch.length>1?`<div class="two"><button class="btn soft seg${SEP?" on":""}" aria-pressed="${SEP}" data-a="sep" data-v="1">Un PDF por test</button><button class="btn soft seg${SEP?"":" on"}" aria-pressed="${!SEP}" data-a="sep" data-v="0">Todo en un PDF</button></div>`:""}
@@ -371,25 +389,28 @@ function vTablero(){
   </main>`;
 }
 function vDatos(){
-  const p=S.perfil;
-  return `<header class="bar"><button class="ghost" data-a="home">‹ Inicio</button><div class="t">Mis datos</div><div class="cnt"></div></header>
-  <main>
-    <p class="note">Aparecen en el encabezado de lo que envíes. Son opcionales.</p>
-    <p class="field"><label for="f-nombre">Nombre</label><input type="text" id="f-nombre" autocomplete="name" value="${esc(p.nombre)}"></p>
+  const p=S.perfil,first=!datosOk();
+  return (first?brand():`<header class="bar"><button class="ghost" data-a="home">‹ Inicio</button><div class="t">Mis datos</div><div class="cnt"></div></header>`)+`<main>
+    ${first?sender()+'<h1 class="big" style="margin-top:0">Antes de empezar, tus datos</h1><p style="margin:0">Son obligatorios: identifican tus respuestas en lo que le envíes al profesional. Se guardan solo en este teléfono.</p>':'<p class="note">Aparecen en el encabezado de lo que envíes.</p>'}
+    <p class="field"><label for="f-nombre">Nombre y apellido</label><input type="text" id="f-nombre" autocomplete="name" value="${esc(p.nombre)}"></p>
     <p class="field"><label for="f-nac">Fecha de nacimiento</label><input type="date" id="f-nac" value="${esc(p.nac)}"></p>
     <p class="field"><label for="f-sexo">Sexo</label><input type="text" id="f-sexo" value="${esc(p.sexo)}"></p>
-    <button class="btn pri" data-a="savedatos">Guardar</button>
-    <section class="sec"><h2>Borrar</h2><div class="pad stack">
+    ${flash?`<div class="msg" role="alert">${flash}</div>`:""}
+    <button class="btn pri" data-a="savedatos">${first?"Guardar y ver los cuestionarios":"Guardar"}</button>
+    ${first?"":`<section class="sec"><h2>Borrar</h2><div class="pad stack">
       <p class="note">Borra de este teléfono todas las respuestas y tus datos. No se puede deshacer.</p>
       ${V.confirm?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="wipe2">Sí, borrar todo</button></div>`:`<button class="btn danger" data-a="wipe">Borrar todas mis respuestas</button>`}
-    </div></section>
+    </div></section>`}
   </main>`;
 }
 function vSinRed(){return brand()+`<main><h1 class="big">No se pudieron cargar los cuestionarios</h1><p style="margin:0">Revisá tu conexión a internet y volvé a intentar.</p><button class="btn pri" data-a="retry">Reintentar</button></main>`;}
 function vRoto(){return brand()+`<main><h1 class="big">Este link está incompleto</h1><p style="margin:0">Puede haberse cortado al copiarlo. Pedile a tu profesional que te lo mande de nuevo.</p><button class="btn soft" data-a="topro">Soy profesional: abrir Svar</button></main>`;}
-const VIEWS={pro:vPro,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed};
+const VIEWS={pro:vPro,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed};
 function render(top){document.getElementById("app").innerHTML=VIEWS[V.name]();if(top)window.scrollTo(0,0);}
-function go(name,extra){V=Object.assign({name},extra||{});flash="";render(true);}
+function go(name,extra){
+  if(MODE==="pac"&&!datosOk())name="datos";
+  if(MODE==="pro"&&!profOk())name="perfil";
+  V=Object.assign({name},extra||{});flash="";render(true);}
 const home=()=>MODE==="pac"?"inicio":"pro";
 
 /* ---------- acciones ---------- */
@@ -410,7 +431,14 @@ const ACT={
     S.resp[f.id][V.i]=k;sync(f);save();render(false);
     const at=V.fid+":"+V.i;clearTimeout(advT);advT=setTimeout(()=>{if(V.name==="q"&&V.fid+":"+V.i===at)next();},260);},
   tema(){const dark=TEMA==="dark"||(TEMA==="auto"&&matchMedia("(prefers-color-scheme:dark)").matches);TEMA=dark?"light":"dark";applyTheme();ls.set("svar.tema",TEMA);},
-  savedatos(){S.perfil={nombre:document.getElementById("f-nombre").value.trim(),nac:document.getElementById("f-nac").value,sexo:document.getElementById("f-sexo").value.trim()};save();go("tablero");},
+  savedatos(){const first=!datosOk(),n=document.getElementById("f-nombre").value.trim(),d=document.getElementById("f-nac").value,x=document.getElementById("f-sexo").value.trim();
+    S.perfil={nombre:n,nac:d,sexo:x};
+    if(!n||!d||!x){flash="Completá "+[!n&&"tu nombre",!d&&"tu fecha de nacimiento",!x&&"el sexo"].filter(Boolean).join(", ")+" para seguir.";render(false);return;}
+    save();go(first?"inicio":"tablero");},
+  saveperfil(){const n=document.getElementById("pf-nombre").value.trim(),m=document.getElementById("pf-mail").value.trim(),t=document.getElementById("pf-mat").value.trim();
+    PRO.nombre=n;PRO.mail=m;PRO.mat=t;
+    if(!n||!MAIL_RE.test(m)){flash=!n?"Falta tu nombre.":"Revisá el mail: no parece una dirección válida.";render(false);return;}
+    V.link="";save();go("pro");},
   wipe(){V.confirm=true;render(false);},
   cancel(){V.confirm=false;render(false);},
   wipe2(){S={perfil:{nombre:"",nac:"",sexo:""},resp:{},done:{}};save();go("inicio");},
@@ -422,15 +450,13 @@ const ACT={
     flash=ok?"Copiado. Pegalo en WhatsApp, un mail o donde quieras.":"No se pudo copiar solo. Seleccioná el texto de abajo y copialo.";V.txt=ok?"":t;render(false);},
   /* profesional */
   psel(el){PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.confirm=false;flash="";render(false);},
-  async mklink(){const fs=picked();if(!fs.length)return;const mail=PRO.mail.trim();
-    if(mail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)){flash="Revisá el mail: no parece una dirección válida.";V.link="";render(false);return;}
+  async mklink(){const fs=picked();if(!fs.length)return;if(!profOk()){go("perfil");return;}const mail=PRO.mail.trim();
     busy="link";flash="";V.link="";render(false);
-    const packed=await pack({e:mail,d:PRO.nombre.trim(),f:fs.map(toWire)});let link="",why="";
+    const packed=await pack({e:mail,d:PRO.nombre.trim(),m:(PRO.mat||"").trim(),f:fs.map(toWire)});let link="",why="";
     try{const r=await fetch(API+"/f",{method:"POST",body:packed});
       if(r.ok){const id=(await r.text()).trim();if(/^[a-z0-9]{8}$/.test(id))link=BASE+"#k="+id;}else why=r.status===429?"limite":"";}catch(e){}
     busy="";V.short=!!link;V.link=link||BASE+"#s="+packed;
-    flash=link?(mail?"":"Sin tu mail, el paciente va a poder compartirte el PDF pero no va a tener el botón de enviar por mail.")
-      :(why==="limite"?"Se crearon muchos links hoy desde esta conexión. ":"No se pudo conectar para crear el link corto. ")+"Este link largo funciona igual; para el corto, probá de nuevo más tarde.";
+    flash=link?"":(why==="limite"?"Se crearon muchos links hoy desde esta conexión. ":"No se pudo conectar para crear el link corto. ")+"Este link largo funciona igual; para el corto, probá de nuevo más tarde.";
     save();render(false);},
   async cplink(){const ok=await copyText(V.link);flash=ok?"Link copiado. Pegalo en el chat con tu paciente.":"No se pudo copiar solo. Mantené apretado el link de arriba y copialo.";render(false);},
   async shlink(){try{await navigator.share({title:"Cuestionarios",text:"Te mando los cuestionarios para completar desde el celular:",url:V.link});}catch(e){}},
@@ -448,7 +474,6 @@ const ACT={
   retry(){location.reload();}
 };
 document.addEventListener("click",e=>{const el=e.target.closest("[data-a]");if(!el||el.disabled)return;const fn=ACT[el.dataset.a];if(fn)fn(el);});
-document.addEventListener("input",e=>{if(e.target.id==="p-mail"){PRO.mail=e.target.value;save();}if(e.target.id==="p-nombre"){PRO.nombre=e.target.value;save();}});
 document.addEventListener("change",async e=>{if(e.target.id!=="p-import")return;const file=e.target.files&&e.target.files[0];if(!file)return;
   let n=0;try{const o=JSON.parse(await file.text()),arr=Array.isArray(o)?o:(o&&o.forms)||[];const fs=arr.map(x=>normalize([x])).filter(Boolean);n=fs.length;addToLib(fs);save();}catch(err){n=0;}
   flash=n?"Se "+(n===1?"importó 1 formulario.":"importaron "+n+" formularios."):"Ese archivo no es una biblioteca de Svar.";render(false);});
@@ -468,13 +493,13 @@ function normalize(parts){
 function addToLib(fs){fs.forEach(f=>{const i=PRO.lib.findIndex(g=>g.code===f.code);if(i>=0){f.id=PRO.lib[i].id;PRO.lib[i]=f;}else PRO.lib.push(f);});}
 
 /* ---------- salida: mail, texto y PDF ---------- */
-function mailHref(fs){const p=S.perfil,L=["Nombre: "+(p.nombre||"-"),"Nacimiento: "+(fdate(p.nac)||"-")+"   Sexo: "+(p.sexo||"-"),"Fecha: "+fdate(today()),""];
+function mailHref(fs){const p=S.perfil,L=[(P.d?"Para: "+quien():""),"Nombre: "+(p.nombre||"-"),"Nacimiento: "+(fdate(p.nac)||"-")+"   Sexo: "+(p.sexo||"-"),"Fecha: "+fdate(today()),""];
   fs.forEach(f=>{L.push(f.code+" ("+count(f)+" de "+f.items.length+")");
     for(let i=0;i<f.items.length;i+=10)L.push(f.items.slice(i,i+10).map((it,j)=>it.n+(letters(f,i+j)||"_")).join("  "));
     if(f.scale)L.push(f.scale.map((o,k)=>LT(k)+"="+o).join(", "));L.push("");});
   L.push("Resumen de pregunta y letra, sin puntaje ni interpretación. Enviado con Svar by fuge1618.");
   return "mailto:"+encodeURIComponent(P.e)+"?subject="+encodeURIComponent("Respuestas "+fs.map(f=>f.code).join(", ")+(p.nombre?" - "+p.nombre:""))+"&body="+encodeURIComponent(L.join("\r\n"));}
-function makeText(fs){const p=S.perfil,L=["Respuestas de cuestionarios","Nombre: "+(p.nombre||"-"),"Fecha de nacimiento: "+(fdate(p.nac)||"-"),"Sexo: "+(p.sexo||"-"),"Generado: "+fdate(today()),""];
+function makeText(fs){const p=S.perfil,L=["Respuestas de cuestionarios"+(P&&P.d?" para "+quien():""),"Nombre: "+(p.nombre||"-"),"Fecha de nacimiento: "+(fdate(p.nac)||"-"),"Sexo: "+(p.sexo||"-"),"Generado: "+fdate(today()),""];
   fs.forEach(f=>{L.push("== "+f.code+" ("+count(f)+" de "+f.items.length+(S.done[f.id]?", completado "+fdate(S.done[f.id]):"")+") ==");
     L.push("Resumen (pregunta-letra):");for(let i=0;i<f.items.length;i+=10)L.push("  "+f.items.slice(i,i+10).map((it,j)=>it.n+"-"+(letters(f,i+j)||"_")).join("  "));
     if(f.scale)L.push("Letras: "+f.scale.map((o,k)=>LT(k)+" = "+o).join(" | "));else L.push("Letras: posición de la opción elegida en cada pregunta (A = primera).");
@@ -508,6 +533,7 @@ async function makePdf(fs){
     d.setFont("helvetica","normal");d.setFontSize(9);d.setTextColor(100);
     d.text(lat("Nacimiento: "+(fdate(p.nac)||"-")+"   Sexo: "+(p.sexo||"-")),W-M,y+17,{align:"right"});
     d.text(S.done[f.id]?"Completado el "+fdate(S.done[f.id])+"  ("+f.items.length+" preguntas)":"Incompleto: "+count(f)+" de "+f.items.length+" respondidas  ("+fdate(today())+")",W-M,y+29,{align:"right"});
+    if(P&&P.d){d.setFont("helvetica","normal");d.setFontSize(9);d.setTextColor(100);d.text(lat("Solicitado por "+quien()),M,y+42);y+=14;}
     y+=40;d.setDrawColor(190);d.setLineWidth(.6);d.line(M,y,W-M,y);d.setDrawColor(255,128,0);d.setLineWidth(2.5);d.line(M,y,M+40,y);y+=26;
     sub("Resumen: pregunta y letra");
     const cols=10,cw=(W-2*M)/cols,rh=18;
@@ -544,10 +570,10 @@ async function saveFile(filename,blob){
   if(mk){sid=mk[1];packed=ls.get("svar.k."+sid);
     if(typeof packed!=="string"){packed=null;try{const r=await fetch(API+"/f/"+sid);if(r.ok){packed=(await r.text()).trim();ls.set("svar.k."+sid,packed);}else if(r.status===404)roto=true;else sinred=true;}catch(e){sinred=true;}}}
   else if(ms){packed=ms[1];sid=hash(packed);}
-  if(packed){try{const o=await unpack(packed);P={e:String(o.e||""),d:String(o.d||""),forms:(o.f||[]).map(fromWire).filter(f=>f.items.length)};if(!P.forms.length)throw 0;
+  if(packed){try{const o=await unpack(packed);P={e:String(o.e||""),d:String(o.d||""),m:String(o.m||""),forms:(o.f||[]).map(fromWire).filter(f=>f.items.length)};if(!P.forms.length)throw 0;
       MODE="pac";KEY="svar.p."+sid;const s=ls.get(KEY);if(s&&typeof s==="object")S=Object.assign(S,s);}catch(e){roto=true;}}
   if(MODE==="pro"){const p=ls.get("svar.pro");if(p&&typeof p==="object")PRO=Object.assign(PRO,p);}
-  V={name:MODE==="pac"?"inicio":sinred?"sinred":roto?"roto":"pro"};render(false);
+  V={name:MODE==="pac"?(datosOk()?"inicio":"datos"):sinred?"sinred":roto?"roto":profOk()?"pro":"perfil"};render(false);
   setTimeout(()=>{const s=document.getElementById("splash");if(s)s.remove();},1700);
 })();
 window.addEventListener("hashchange",()=>location.reload());
