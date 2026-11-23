@@ -169,6 +169,10 @@ input[type=email]{width:100%;padding:12px;border:1px solid var(--line);border-ra
 .mailbox{display:flex;align-items:center;gap:10px;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:6px 6px 6px 12px;font-size:14px}
 .mailbox span{overflow-wrap:anywhere}
 .mailbox .btn{min-height:40px;padding:8px 12px;flex:none}
+.librow{display:flex;gap:8px;align-items:stretch}
+.librow .opt{flex:1;min-width:0}
+.keybtn{flex:none;min-height:54px;padding:8px 12px;font-size:13px;font-family:var(--mono)}
+.keybtn.has{border-color:var(--ok);color:var(--ok)}
 </style>
 </head>
 <body>
@@ -265,7 +269,7 @@ function vPro(){
     <p class="lema">Modo profesional. Elegí los cuestionarios, creá un link y mandáselo a tu paciente.</p>
     ${noStore()}
     <section class="sec"><h2>Biblioteca <span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0">${lib.length} ${lib.length===1?"formulario":"formularios"}</span></h2><div class="pad stack">
-      ${lib.length?`<div class="opts" role="group" aria-label="Cuestionarios para enviar">${lib.map(f=>`<button class="opt${PSEL[f.id]?" on":""}" role="checkbox" aria-checked="${!!PSEL[f.id]}" data-a="psel" data-f="${esc(f.id)}"><span class="mk"></span><span class="mono" style="font-weight:600;flex:1">${esc(f.code)}</span><span class="mono" style="font-size:12px;color:var(--muted)">${f.items.length} preg.</span></button>`).join("")}</div>`
+      ${lib.length?`<p class="note">Tildá los que querés enviar. "Clave" abre la clave de puntuación de cada cuestionario.</p><div class="opts" role="group" aria-label="Cuestionarios para enviar">${lib.map(f=>`<div class="librow"><button class="opt${PSEL[f.id]?" on":""}" role="checkbox" aria-checked="${!!PSEL[f.id]}" data-a="psel" data-f="${esc(f.id)}"><span class="mk"></span><span class="mono" style="font-weight:600;flex:1">${esc(f.code)}</span><span class="mono" style="font-size:12px;color:var(--muted)">${f.items.length} preg.</span></button><button class="btn soft keybtn${f.key?" has":""}" data-a="go" data-v="form" data-f="${esc(f.id)}" aria-label="Clave de puntuación de ${esc(f.code)}">${f.key?"Clave ✓":"Clave"}</button></div>`).join("")}</div>`
         :'<div class="msg">Todavía no hay formularios. Agregá uno o importá una biblioteca.</div>'}
       <div class="two"><button class="btn soft" data-a="go" data-v="agregar">Agregar formulario</button><label class="btn soft filebtn" for="p-import">Importar biblioteca</label></div>
       <input type="file" id="p-import" accept="application/json,.json" hidden>
@@ -300,6 +304,41 @@ function vPerfil(){
     <button class="btn pri" data-a="saveperfil">${first?"Guardar y seguir":"Guardar"}</button>
   </main>`;
 }
+function keyPrompt(f){const groups={};f.items.forEach(it=>{const o=opts(f,it),k=o.map((x,i)=>LT(i)+"="+x).join(" | ");(groups[k]=groups[k]||[]).push(String(it.n));});
+  return `Vas a pasar a un formato fijo la clave de puntuación (clave de corrección) del cuestionario "${f.code}", que te adjunto o pego junto con este mensaje.
+El cuestionario tiene ${f.items.length} preguntas. Estas son sus opciones, en orden, con la letra que usa la app:
+${Object.keys(groups).map(k=>"- Preguntas "+groups[k].join(", ")+": "+k).join("\n")}
+Reglas:
+- Usá solo lo que dice la clave que te paso. No inventes ni completes puntajes de memoria. Si algo no está en la clave, no lo pongas.
+- "rules": grupos de preguntas que puntúan igual. "n" son los números de pregunta; "p" son los puntos de cada opción en el mismo orden de las letras (A primero). Tiene que haber un punto por cada opción.
+- Las preguntas que no puntúan (de relleno) no van en ninguna regla.
+- Los ítems invertidos llevan los puntos al revés en "p".
+- "subs": subescalas, si la clave las define, con su nombre y sus preguntas. Si no hay, lista vacía.
+- "src": de dónde sale la clave (autores y año). "ref": valores de referencia o puntos de corte publicados, en una frase; si no hay, "".
+Respondé únicamente con JSON, sin texto antes ni después, con esta forma:
+{"src":"...","ref":"...","rules":[{"n":["1","2"],"p":[1,1,0,0]},{"n":["3"],"p":[0,0,1,1]}],"subs":[{"name":"...","n":["1","3"]}]}`;}
+function vForm(){
+  const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return vPro();const k=f.key;
+  return `<header class="bar"><button class="ghost" data-a="home">‹ Volver</button><div class="t mono">${esc(f.code)}</div><div class="cnt mono">${f.items.length} preg.</div></header>
+  <main>
+    <section class="sec"><h2>Clave de puntuación</h2><div class="pad stack">
+      ${k?`<div><div style="font-weight:600">${esc(keySummary(k,f))}</div>${k.subs.length?`<div class="note" style="margin-top:4px">${k.subs.map(u=>esc(u.name)+" ("+u.n.length+")").join(" · ")}</div>`:""}
+        ${k.src?`<p class="note" style="margin-top:8px">Fuente: ${esc(k.src)}</p>`:""}${k.ref?`<p class="note">Referencia: ${esc(k.ref)}</p>`:""}</div>
+        <p class="note">Con la clave cargada, el Excel de "Analizar resultados" suma una hoja de puntajes. Revisala contra tu material antes de usarla.</p>
+        ${V.confirm?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="keyrm2">Sí, quitar la clave</button></div>`:`<button class="btn danger" data-a="keyrm">Quitar la clave</button>`}`
+      :`<div class="msg">Este cuestionario no tiene clave. El Excel va a traer las respuestas sin puntaje.</div>`}
+    </div></section>
+    <section class="sec"><h2>${k?"Cambiar la clave":"Cargar la clave"}</h2><div class="pad stack">
+      <p class="note">1. Copiá las indicaciones. 2. Pegalas en tu IA (Claude, ChatGPT, Gemini) junto con la clave de corrección que tengas de este cuestionario. 3. Pegá acá la respuesta.</p>
+      <button class="btn" data-a="cpkeyprompt">Copiar indicaciones</button>
+      ${V.showp?`<textarea readonly aria-label="Indicaciones para la IA">${esc(keyPrompt(f))}</textarea>`:""}
+      <textarea id="k-json" aria-label="Respuesta de la IA con la clave" placeholder='{"rules": ... }'></textarea>
+      <button class="btn pri" data-a="keyparse">Leer clave</button>
+      ${flash?`<div class="msg" role="status">${flash}</div>`:""}
+      <p class="note">La clave queda solo en tu biblioteca, en este dispositivo. No viaja en los links ni la ve quien responde.</p>
+    </div></section>
+  </main>`;
+}
 let AN={recs:[],bad:[],junto:false};
 const pacKey=r=>(r.perfil.nombre||"").trim().toLowerCase().replace(/\s+/g," ")+"|"+(r.perfil.nac||"");
 function pacGroups(){const m=new Map();AN.recs.forEach((x,i)=>{const k=pacKey(x.rec);if(!m.has(k))m.set(k,{nombre:x.rec.perfil.nombre||"Sin nombre",nac:x.rec.perfil.nac,items:[]});m.get(k).items.push({x,i});});return[...m.values()];}
@@ -313,11 +352,11 @@ function vAnalizar(){
     ${AN.bad.length?`<div class="msg" role="alert">No pude leer ${AN.bad.length===1?"este archivo":"estos archivos"}: ${AN.bad.map(esc).join(", ")}. Tiene que ser el PDF original que generó Svar, sin imprimir ni volver a guardar. Si es anterior al 23/11/2026, pedile al paciente que lo genere de nuevo.</div>`:""}
     ${gs.map(g=>{const codes=g.items.flatMap(o=>o.x.rec.forms.map(f=>f.code));
       return `<section class="sec"><h2>${esc(g.nombre)} <span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none">${g.nac?esc(fdate(g.nac))+" · ":""}${codes.length} ${codes.length===1?"cuestionario":"cuestionarios"}</span></h2>
-      <table><tbody>${g.items.map(o=>`<tr><td>${o.x.rec.forms.map(f=>`<span class="mono" style="font-weight:600">${esc(f.code)}</span> <span style="color:var(--muted)">${rCount(f)}/${f.items.length}</span>`).join(" · ")}<span class="ans none">${esc(o.x.name)}</span></td><td style="width:1%"><button class="btn soft" style="min-height:36px;padding:6px 10px" data-a="anrm" data-i="${o.i}">Quitar</button></td></tr>`).join("")}</tbody></table></section>`;}).join("")}
+      <table><tbody>${g.items.map(o=>`<tr><td>${o.x.rec.forms.map(f=>`<span class="mono" style="font-weight:600">${esc(f.code)}</span> <span style="color:var(--muted)">${rCount(f)}/${f.items.length}${keyFor(f)?" · con puntaje":""}</span>`).join(" · ")}<span class="ans none">${esc(o.x.name)}</span></td><td style="width:1%"><button class="btn soft" style="min-height:36px;padding:6px 10px" data-a="anrm" data-i="${o.i}">Quitar</button></td></tr>`).join("")}</tbody></table></section>`;}).join("")}
     ${n?`${pac>1?`<div class="two"><button class="btn soft seg${AN.junto?"":" on"}" aria-pressed="${!AN.junto}" data-a="anmodo" data-v="0">Un Excel por paciente</button><button class="btn soft seg${AN.junto?" on":""}" aria-pressed="${AN.junto}" data-a="anmodo" data-v="1">Todos en un Excel</button></div>`:""}
       <button class="btn pri" data-a="anxlsx" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":pac>1&&!AN.junto?"Descargar "+pac+" Excel, uno por paciente":"Descargar Excel"}</button>
       <button class="btn soft" data-a="anclear">Empezar de nuevo</button>
-      <p class="note">Cada Excel trae un resumen, una hoja con una fila por respuesta, la referencia de opciones y una hoja por cuestionario. Sin puntaje ni interpretación.</p>`:""}
+      <p class="note">Cada Excel trae un resumen, una hoja con una fila por respuesta, la referencia de opciones y una hoja por cuestionario. Los cuestionarios que tengan clave en tu biblioteca suman una hoja de puntajes, sin interpretación.</p>`:""}
     ${flash?`<div class="msg" role="status">${flash}</div>`:""}
     <p class="note">Los PDF se leen en este dispositivo y no quedan guardados: al salir de esta pantalla o cerrar la app hay que cargarlos de nuevo.</p>
   </main>`;
@@ -332,6 +371,7 @@ Reglas:
 - "multi": true solo si la consigna dice que se puede elegir más de una opción.
 - "n" es el número de la pregunta como figura en el original. "code" es el título o sigla del cuestionario si figura; si no, "Formulario".
 - "intro" es la consigna general si figura; si no, "".
+- Solo si además te paso la clave de puntuación del cuestionario, agregá "key" con esta forma: {"src":"autores y año","ref":"valores de referencia publicados o \"\"","rules":[{"n":["1","2"],"p":[1,1,0,0]}],"subs":[{"name":"...","n":["1"]}]}, donde "p" son los puntos de cada opción en orden y las preguntas que no puntúan no figuran. No inventes una clave de memoria: si no te la paso, no pongas "key".
 Respondé únicamente con JSON, sin texto antes ni después, con esta forma:
 {"code":"AB-1","intro":"...","scale":["...","..."],"items":[{"n":"1","t":"..."},{"n":"2","t":"...","o":["...","..."],"multi":false}]}`;
 function vAgregar(){
@@ -341,6 +381,7 @@ function vAgregar(){
       <h1 class="big">Revisá antes de guardar</h1>
       <p class="field"><label for="f-code">Nombre corto del cuestionario</label><input type="text" id="f-code" value="${esc(f.code)}" maxlength="24"></p>
       <section class="sec"><h2>${f.items.length} preguntas encontradas</h2>
+      ${f.key?`<div class="pad" style="border-bottom:1px solid var(--line)"><b>Clave incluida:</b> ${esc(keySummary(f.key,f))}</div>`:""}
       <table><tbody>${f.items.slice(0,4).map(it=>`<tr><td class="n">${esc(it.n)}</td><td>${esc(it.t)}<span class="ans none">${opts(f,it).map(esc).join(" · ")}</span></td></tr>`).join("")}
       ${f.items.length>4?`<tr><td class="n">…</td><td class="note">y ${f.items.length-4} más</td></tr>`:""}</tbody></table></section>
       <p class="note">La transcripción la hizo una IA y puede equivocarse. Compará la cantidad de preguntas y las opciones con el original.</p>
@@ -351,7 +392,7 @@ function vAgregar(){
       <p class="note">Le dicen a tu IA cómo transcribir el formulario sin cambiarle nada.</p>
       <button class="btn" data-a="cpprompt">Copiar indicaciones</button>
       ${V.showp?`<textarea readonly aria-label="Indicaciones para la IA">${esc(PROMPT)}</textarea>`:""}</div></section>
-    <section class="sec"><h2>Paso 2 · Pasáselo a tu IA</h2><div class="pad"><p class="note">Abrí Claude, ChatGPT o Gemini, pegá las indicaciones y adjuntá el PDF o las fotos del formulario en blanco.</p></div></section>
+    <section class="sec"><h2>Paso 2 · Pasáselo a tu IA</h2><div class="pad"><p class="note">Abrí Claude, ChatGPT o Gemini, pegá las indicaciones y adjuntá el PDF o las fotos del formulario en blanco. Si tenés la clave de puntuación, adjuntala también; si no, la podés cargar después desde "Clave".</p></div></section>
     <section class="sec"><h2>Paso 3 · Pegá la respuesta acá</h2><div class="pad stack">
       <textarea id="f-json" aria-label="Respuesta de la IA" placeholder='{"code": ... }'></textarea>
       <button class="btn pri" data-a="parse">Leer formulario</button>
@@ -471,8 +512,9 @@ function vConfig(){
   </main>`;
 }
 function vRoto(){return brand()+`<main><h1 class="big">Este link está incompleto</h1><p style="margin:0">Puede haberse cortado al copiarlo. Pedile a tu profesional que te lo mande de nuevo.</p><button class="btn soft" data-a="topro">Soy profesional: abrir Svar</button></main>`;}
-const VIEWS={pro:vPro,analizar:vAnalizar,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed,config:vConfig};
+const VIEWS={pro:vPro,form:vForm,analizar:vAnalizar,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed,config:vConfig};
 function render(top){document.getElementById("app").innerHTML=VIEWS[V.name]();if(top)window.scrollTo(0,0);}
+function goForm(id){go("form",{fid:id});}
 function go(name,extra){
   if(MODE==="pac"&&!datosOk())name="datos";
   if(MODE==="pro"&&!profOk())name="perfil";
@@ -486,7 +528,7 @@ function next(){const f=F(V.fid);if(V.i<f.items.length-1)go("q",{fid:V.fid,i:V.i
 async function copyText(t){try{await navigator.clipboard.writeText(t);return true;}catch(e){return false;}}
 const ACT={
   home(){draft=null;go(home());},
-  go(el){go(el.dataset.v);},
+  go(el){if(el.dataset.v==="form")return goForm(el.dataset.f);go(el.dataset.v);},
   open(el){openForm(el.dataset.f);},
   start(){go("q",{fid:V.fid,i:0});},
   goto(el){go("q",{fid:el.dataset.f,i:+el.dataset.i});},
@@ -516,6 +558,13 @@ const ACT={
   async cpmail(){const ok=await copyText(P.e);flash=ok?"Mail copiado.":"No se pudo copiar. Mantené apretada la dirección para copiarla.";render(false);},
   /* profesional */
   anrm(el){AN.recs.splice(+el.dataset.i,1);flash="";render(false);},
+  async cpkeyprompt(){const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return;const ok=await copyText(keyPrompt(f));V.showp=!ok;flash=ok?"Indicaciones copiadas. Pegalas en tu IA junto con la clave.":"No se pudo copiar solo. Copiá el texto que aparece arriba.";render(false);},
+  keyparse(){const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return;const t=document.getElementById("k-json").value,o=looseJson(t);
+    if(!o){flash=t.trim()?"No pude leer eso. Pegá la respuesta completa de la IA, desde la primera llave { hasta la última }.":"Pegá primero la respuesta de tu IA.";render(false);return;}
+    const c=keyCheck(o.key||o,f);if(c.err){flash=c.err+" Revisá la clave y probá de nuevo.";render(false);return;}
+    f.key=c.key;save();V.confirm=false;flash="Clave guardada: "+esc(keySummary(c.key,f))+".";render(true);},
+  keyrm(){V.confirm=true;render(false);},
+  keyrm2(){const f=PRO.lib.find(x=>x.id===V.fid);if(f){delete f.key;save();}V.confirm=false;flash="Clave quitada.";render(false);},
   anmodo(el){AN.junto=el.dataset.v==="1";render(false);},
   anclear(){AN={recs:[],bad:[],junto:false};flash="";render(false);},
   async anxlsx(){if(!AN.recs.length)return;busy="xlsx";flash="";render(false);
@@ -571,9 +620,10 @@ function normalize(parts){
     const o=Array.isArray(it.o)&&it.o.length>1?it.o.map(String):null;if(!o&&!scale)return;
     const x={n:String(it.n==null?items.length+1:it.n),t:it.t.trim()};if(o)x.o=o;if(it.multi===true)x.multi=true;items.push(x);}));
   if(!items.length)return null;
-  const f={id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),code:String(first.code||"Formulario").slice(0,24),intro:String(first.intro||""),items};if(scale)f.scale=scale;return f;
+  const f={id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),code:String(first.code||"Formulario").slice(0,24),intro:String(first.intro||""),items};if(scale)f.scale=scale;
+  if(first.key){const c=keyCheck(first.key,f);if(c.key)f.key=c.key;}return f;
 }
-function addToLib(fs){fs.forEach(f=>{const i=PRO.lib.findIndex(g=>g.code===f.code);if(i>=0){f.id=PRO.lib[i].id;PRO.lib[i]=f;}else PRO.lib.push(f);});}
+function addToLib(fs){fs.forEach(f=>{const i=PRO.lib.findIndex(g=>g.code===f.code);if(i>=0){f.id=PRO.lib[i].id;if(!f.key&&PRO.lib[i].key){const c=keyCheck(PRO.lib[i].key,f);if(c.key)f.key=c.key;}PRO.lib[i]=f;}else PRO.lib.push(f);});}
 
 /* ---------- salida: mail, texto y PDF ---------- */
 function loadScript(src){return new Promise((ok,no)=>{if(document.querySelector('script[data-src="'+src+'"]'))return ok();const s=document.createElement("script");s.src=src;s.dataset.src=src;s.onload=()=>ok();s.onerror=()=>{s.remove();no(new Error("script"));};document.head.appendChild(s);});}
@@ -600,6 +650,31 @@ function recordRead(o){if(!o||o.v!==1||!Array.isArray(o.f))return null;const p=o
     forms:o.f.map((w,i)=>{const f=fromWire(w,i);f.resp=Array.isArray(w.r)?w.r:[];f.done=w.k?String(w.k):"";return f;}).filter(f=>f.items.length)};}
 async function readPdfRecord(file){const u=new Uint8Array(await file.arrayBuffer());let t="";for(let i=0;i<u.length;i+=0x8000)t+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));
   const m=t.match(/svar1:([zj][A-Za-z0-9_-]+)/);if(!m)return null;try{return recordRead(await unpack(m[1]));}catch(e){return null;}}
+/* Claves de puntuación: viven en la biblioteca del profesional, nunca viajan al paciente ni van dentro del PDF. */
+function keyCheck(k,f){
+  if(!k||typeof k!=="object"||!Array.isArray(k.rules)||!k.rules.length)return{err:"No encontré reglas de puntuación en ese texto."};
+  const by={};f.items.forEach(it=>{by[String(it.n)]=it;});const seen={},rules=[];
+  for(const r of k.rules){const n=(Array.isArray(r&&r.n)?r.n:[]).map(String),p=Array.isArray(r&&r.p)?r.p.map(Number):[];
+    if(!n.length||!p.length||p.some(x=>!Number.isFinite(x)))return{err:"Hay una regla sin preguntas o sin puntos."};
+    for(const x of n){if(!by[x])return{err:"La clave nombra la pregunta "+x+", que no existe en este cuestionario."};
+      if(seen[x])return{err:"La pregunta "+x+" aparece en más de una regla."};seen[x]=1;
+      const no=opts(f,by[x]).length;if(no!==p.length)return{err:"La pregunta "+x+" tiene "+no+" opciones y la clave trae "+p.length+" puntajes."};}
+    rules.push({n,p});}
+  const subs=[];for(const u of (Array.isArray(k.subs)?k.subs:[])){const n=(Array.isArray(u&&u.n)?u.n:[]).map(String);if(!u||!u.name||!n.length)continue;
+    for(const x of n)if(!seen[x])return{err:"La subescala "+u.name+" incluye la pregunta "+x+", que no puntúa."};subs.push({name:String(u.name).slice(0,60),n});}
+  return{key:{src:String(k.src||"").slice(0,300),ref:String(k.ref||"").slice(0,400),rules,subs}};
+}
+function keyFor(f){const g=PRO.lib.find(x=>x.key&&x.code.trim().toLowerCase()===String(f.code).trim().toLowerCase());if(!g)return null;
+  const ns={};f.items.forEach(it=>{ns[String(it.n)]=1;});return g.key.rules.every(r=>r.n.every(x=>ns[x]))?g.key:null;}
+function scoreForm(f,key){
+  const pts={},P={};key.rules.forEach(r=>r.n.forEach(x=>{P[x]=r.p;}));
+  f.items.forEach((it,i)=>{const p=P[String(it.n)],r=f.resp[i];pts[i]=p&&Number.isInteger(r)&&p[r]!=null?p[r]:null;});
+  const idx={};f.items.forEach((it,i)=>{idx[String(it.n)]=i;});
+  const scale=(name,ns)=>{let sum=0,min=0,max=0,ans=0;ns.forEach(x=>{const p=P[x],i=idx[x];min+=Math.min.apply(null,p);max+=Math.max.apply(null,p);if(pts[i]!=null){sum+=pts[i];ans++;}});
+    return{name,sum,min,max,ans,n:ns.length};};
+  return{pts,scales:[scale("Total",Object.keys(P))].concat(key.subs.map(u=>scale(u.name,u.n)))};
+}
+function keySummary(k,f){const n=k.rules.reduce((a,r)=>a+r.n.length,0);return n+" de "+f.items.length+" preguntas puntúan"+(k.subs.length?" · "+k.subs.length+" subescalas":"");}
 const rHas=(f,i)=>{const r=f.resp[i];return f.items[i].multi?Array.isArray(r)&&r.length>0:Number.isInteger(r);};
 const rSort=r=>r.slice().sort((a,b)=>a-b);
 const rLet=(f,i)=>{const r=f.resp[i];return !rHas(f,i)?null:Array.isArray(r)?rSort(r).map(LT).join(","):LT(r);};
@@ -617,21 +692,33 @@ async function makeXlsx(recs){
   z.columns=[{header:"paciente",key:"pa",width:28},{header:"fecha_nacimiento",key:"fn",width:17,style:{numFmt:DF}},{header:"sexo",key:"sx",width:8},{header:"cuestionario",key:"cu",width:14},{header:"preguntas",key:"n",width:11},{header:"respondidas",key:"r",width:13},{header:"completo",key:"c",width:10},{header:"fecha_completado",key:"fc",width:17,style:{numFmt:DF}},{header:"fecha_informe",key:"fi",width:15,style:{numFmt:DF}}];
   const a=wb.addWorksheet("Respuestas");
   a.columns=[{header:"paciente",key:"pa",width:26},{header:"fecha_nacimiento",key:"fn",width:17,style:{numFmt:DF}},{header:"sexo",key:"sx",width:8},{header:"cuestionario",key:"cu",width:14},{header:"fecha_completado",key:"fc",width:17,style:{numFmt:DF}},
-    {header:"n_pregunta",key:"n",width:12},{header:"pregunta",key:"q",width:70,style:{alignment:W}},{header:"respuesta_letra",key:"l",width:16},{header:"respuesta_numero",key:"k",width:17},{header:"respuesta_texto",key:"t",width:38,style:{alignment:W}}];
+    {header:"n_pregunta",key:"n",width:12},{header:"pregunta",key:"q",width:70,style:{alignment:W}},{header:"respuesta_letra",key:"l",width:16},{header:"respuesta_numero",key:"k",width:17},{header:"respuesta_texto",key:"t",width:38,style:{alignment:W}},{header:"puntos",key:"pt",width:9}];
   const o=wb.addWorksheet("Opciones");
   o.columns=[{header:"cuestionario",key:"cu",width:14},{header:"n_pregunta",key:"n",width:12},{header:"letra",key:"l",width:8},{header:"numero",key:"k",width:9},{header:"texto",key:"t",width:60,style:{alignment:W}}];
+  const y=wb.addWorksheet("Puntajes");
+  y.columns=[{header:"paciente",key:"pa",width:28},{header:"fecha_nacimiento",key:"fn",width:17,style:{numFmt:DF}},{header:"sexo",key:"sx",width:8},{header:"cuestionario",key:"cu",width:14},{header:"escala",key:"es",width:26},{header:"puntaje",key:"p",width:10},{header:"minimo",key:"mi",width:9},{header:"maximo",key:"ma",width:9},{header:"items_respondidos",key:"ir",width:18},{header:"items_de_la_escala",key:"ie",width:18},{header:"completo",key:"c",width:10},{header:"referencia_publicada",key:"rf",width:60,style:{alignment:W}}];
+  const notas={};let hayPuntaje=false;
   const tests=[],seen={};
   recs.forEach(rec=>{const p=rec.perfil,base={pa:p.nombre,fn:D(p.nac),sx:p.sexo};
     rec.forms.forEach(f=>{const c=rCount(f);
       z.addRow(Object.assign({},base,{cu:f.code,n:f.items.length,r:c,c:c===f.items.length?"SI":"NO",fc:D(f.done),fi:D(rec.fecha)}));
-      f.items.forEach((it,i)=>a.addRow(Object.assign({},base,{cu:f.code,fc:D(f.done),n:num(it.n),q:it.t,l:rLet(f,i),k:rNum(f,i),t:rTxt(f,i)})));
+      const key=keyFor(f),sc=key?scoreForm(f,key):null;
+      if(sc){hayPuntaje=true;notas[f.code]=key;sc.scales.forEach((e,j)=>y.addRow(Object.assign({},base,{cu:f.code,es:e.name,p:e.sum,mi:e.min,ma:e.max,ir:e.ans,ie:e.n,c:e.ans===e.n?"SI":"NO",rf:j===0?key.ref:""})));}
+      f.items.forEach((it,i)=>a.addRow(Object.assign({},base,{cu:f.code,fc:D(f.done),n:num(it.n),q:it.t,l:rLet(f,i),k:rNum(f,i),t:rTxt(f,i),pt:sc?sc.pts[i]:null})));
       const sig=f.code+"|"+f.items.map(it=>it.n).join(",");
       if(!seen[sig]){seen[sig]={code:f.code,items:f.items,rows:[]};tests.push(seen[sig]);
         if(f.scale)f.scale.forEach((x,k)=>o.addRow({cu:f.code,n:"todas",l:LT(k),k:k+1,t:x}));
         f.items.forEach(it=>{if(it.o)it.o.forEach((x,k)=>o.addRow({cu:f.code,n:num(it.n),l:LT(k),k:k+1,t:x}));});}
       seen[sig].rows.push([p.nombre,D(p.nac),p.sexo,D(f.done)].concat(f.items.map((_,i)=>rNum(f,i))));});});
   table(z);table(a);table(o);
-  const used={Resumen:1,Respuestas:1,Opciones:1};
+  if(hayPuntaje){table(y);y.eachRow((r,n)=>{if(n>1&&r.getCell(5).value==="Total")r.font={bold:true};});
+    const nt=wb.addWorksheet("Notas");nt.columns=[{width:16},{width:110,style:{alignment:W}}];
+    nt.addRow(["Puntajes","Suma de puntos según la clave cargada por el profesional en su biblioteca de Svar. Son orientativos: no constituyen diagnóstico ni interpretación. Si una escala figura incompleta, el puntaje solo suma las preguntas respondidas."]);
+    nt.addRow(["Control","La columna \"puntos\" de la hoja Respuestas muestra lo que sumó cada pregunta, para poder revisar la cuenta. Las preguntas sin puntos no forman parte del puntaje."]);
+    Object.keys(notas).forEach(c=>nt.addRow([c,(notas[c].src||"Clave sin fuente indicada.")+(notas[c].ref?" Referencia: "+notas[c].ref:"")]));
+    nt.getColumn(1).font={bold:true};}
+  else wb.removeWorksheet(y.id);
+  const used={Resumen:1,Puntajes:1,Respuestas:1,Opciones:1,Notas:1};
   tests.forEach(t=>{let name=String(t.code).replace(/[\\\/\?\*\[\]:]/g," ").trim().slice(0,28)||"Test",base=name,c=2;while(used[name]){name=base.slice(0,26)+" "+c++;}used[name]=1;
     const w=wb.addWorksheet(name);
     w.columns=[{header:"paciente",width:26},{header:"fecha_nacimiento",width:17,style:{numFmt:DF}},{header:"sexo",width:8},{header:"fecha_completado",width:17,style:{numFmt:DF}}].concat(t.items.map(it=>({header:"p"+it.n,width:6,style:{alignment:{horizontal:"center"}}})));
