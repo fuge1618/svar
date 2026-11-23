@@ -300,21 +300,26 @@ function vPerfil(){
     <button class="btn pri" data-a="saveperfil">${first?"Guardar y seguir":"Guardar"}</button>
   </main>`;
 }
-let AN={recs:[],bad:[]};
+let AN={recs:[],bad:[],junto:false};
+const pacKey=r=>(r.perfil.nombre||"").trim().toLowerCase().replace(/\s+/g," ")+"|"+(r.perfil.nac||"");
+function pacGroups(){const m=new Map();AN.recs.forEach((x,i)=>{const k=pacKey(x.rec);if(!m.has(k))m.set(k,{nombre:x.rec.perfil.nombre||"Sin nombre",nac:x.rec.perfil.nac,items:[]});m.get(k).items.push({x,i});});return[...m.values()];}
 function vAnalizar(){
-  const n=AN.recs.length,pac=new Set(AN.recs.map(x=>x.rec.perfil.nombre)).size;
+  const n=AN.recs.length,gs=pacGroups(),pac=gs.length;
   return `<header class="bar"><button class="ghost" data-a="home">‹ Volver</button><div class="t">Analizar resultados</div><div class="cnt"></div></header>
   <main>
-    <p style="margin:0">Cargá los PDF que te mandaron tus pacientes. Svar lee las respuestas que cada PDF trae adentro y arma un Excel listo para analizar.</p>
+    <p style="margin:0">Cargá todos los PDF que te mandaron, de una vez o en tandas. Svar los agrupa por paciente y arma un solo Excel con todos sus cuestionarios.</p>
     <label class="btn pri filebtn" for="a-files">${n?"Agregar más PDF":"Elegir los PDF"}</label>
     <input type="file" id="a-files" accept="application/pdf,.pdf" multiple hidden>
     ${AN.bad.length?`<div class="msg" role="alert">No pude leer ${AN.bad.length===1?"este archivo":"estos archivos"}: ${AN.bad.map(esc).join(", ")}. Tiene que ser el PDF original que generó Svar, sin imprimir ni volver a guardar. Si es anterior al 23/11/2026, pedile al paciente que lo genere de nuevo.</div>`:""}
-    ${n?`<section class="sec"><h2>${n} PDF ${n===1?"leído":"leídos"} <span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0">${pac} ${pac===1?"paciente":"pacientes"}</span></h2>
-      <table><tbody>${AN.recs.map((x,i)=>`<tr><td>${esc(x.rec.perfil.nombre||"Sin nombre")}<span class="ans none">${x.rec.forms.map(f=>esc(f.code)+" "+rCount(f)+"/"+f.items.length).join(" · ")}</span></td><td style="width:1%"><button class="btn soft" style="min-height:36px;padding:6px 10px" data-a="anrm" data-i="${i}" aria-label="Quitar">Quitar</button></td></tr>`).join("")}</tbody></table></section>
-      <button class="btn pri" data-a="anxlsx" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":"Descargar Excel"}</button>
-      <p class="note">El Excel trae un resumen, una hoja con una fila por respuesta, la referencia de opciones y una hoja por cuestionario con una fila por paciente. Sin puntaje ni interpretación.</p>`:""}
+    ${gs.map(g=>{const codes=g.items.flatMap(o=>o.x.rec.forms.map(f=>f.code));
+      return `<section class="sec"><h2>${esc(g.nombre)} <span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none">${g.nac?esc(fdate(g.nac))+" · ":""}${codes.length} ${codes.length===1?"cuestionario":"cuestionarios"}</span></h2>
+      <table><tbody>${g.items.map(o=>`<tr><td>${o.x.rec.forms.map(f=>`<span class="mono" style="font-weight:600">${esc(f.code)}</span> <span style="color:var(--muted)">${rCount(f)}/${f.items.length}</span>`).join(" · ")}<span class="ans none">${esc(o.x.name)}</span></td><td style="width:1%"><button class="btn soft" style="min-height:36px;padding:6px 10px" data-a="anrm" data-i="${o.i}">Quitar</button></td></tr>`).join("")}</tbody></table></section>`;}).join("")}
+    ${n?`${pac>1?`<div class="two"><button class="btn soft seg${AN.junto?"":" on"}" aria-pressed="${!AN.junto}" data-a="anmodo" data-v="0">Un Excel por paciente</button><button class="btn soft seg${AN.junto?" on":""}" aria-pressed="${AN.junto}" data-a="anmodo" data-v="1">Todos en un Excel</button></div>`:""}
+      <button class="btn pri" data-a="anxlsx" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":pac>1&&!AN.junto?"Descargar "+pac+" Excel, uno por paciente":"Descargar Excel"}</button>
+      <button class="btn soft" data-a="anclear">Empezar de nuevo</button>
+      <p class="note">Cada Excel trae un resumen, una hoja con una fila por respuesta, la referencia de opciones y una hoja por cuestionario. Sin puntaje ni interpretación.</p>`:""}
     ${flash?`<div class="msg" role="status">${flash}</div>`:""}
-    <p class="note">Los PDF se leen en este dispositivo. No se suben a ningún servidor.</p>
+    <p class="note">Los PDF se leen en este dispositivo y no quedan guardados: al salir de esta pantalla o cerrar la app hay que cargarlos de nuevo.</p>
   </main>`;
 }
 const PROMPT=`Vas a transcribir un cuestionario de opción múltiple (de los que se completan tildando una respuesta) para mostrarlo en una app.
@@ -511,10 +516,14 @@ const ACT={
   async cpmail(){const ok=await copyText(P.e);flash=ok?"Mail copiado.":"No se pudo copiar. Mantené apretada la dirección para copiarla.";render(false);},
   /* profesional */
   anrm(el){AN.recs.splice(+el.dataset.i,1);flash="";render(false);},
+  anmodo(el){AN.junto=el.dataset.v==="1";render(false);},
+  anclear(){AN={recs:[],bad:[],junto:false};flash="";render(false);},
   async anxlsx(){if(!AN.recs.length)return;busy="xlsx";flash="";render(false);
-    try{const recs=AN.recs.map(x=>x.rec),names=[...new Set(recs.map(r=>r.perfil.nombre).filter(Boolean))],codes=[...new Set(recs.flatMap(r=>r.forms.map(f=>f.code)))];
-      const name=(codes.join(" ").replace(/[^\w\s-]/g,"").slice(0,60)+" - "+(names.length===1?names[0].replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g,""):names.length+" pacientes")+" - "+today()+".xlsx");
-      const r=await saveFile(name,await makeXlsx(recs));flash=r==="saved"?"Excel listo. Buscalo en tus descargas.":"No se pudo descargar.";}
+    try{const clean=t=>String(t||"").replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g,"").trim(),codesOf=rs=>[...new Set(rs.flatMap(r=>r.forms.map(f=>f.code)))].join(" ").replace(/[^\w\s-]/g,"").slice(0,60);
+      const gs=pacGroups(),jobs=gs.length>1&&!AN.junto?gs.map(g=>({recs:g.items.map(o=>o.x.rec),name:(clean(g.nombre)||"Paciente")+" - "+codesOf(g.items.map(o=>o.x.rec))+" - "+today()+".xlsx"}))
+        :[{recs:AN.recs.map(x=>x.rec),name:(gs.length===1?(clean(gs[0].nombre)||"Paciente"):gs.length+" pacientes")+" - "+codesOf(AN.recs.map(x=>x.rec))+" - "+today()+".xlsx"}];
+      let ok=0;for(const j of jobs){if(await saveFile(j.name,await makeXlsx(j.recs))!=="saved")break;ok++;if(jobs.length>1)await new Promise(r=>setTimeout(r,400));}
+      flash=ok===jobs.length?(ok===1?"Excel listo. Buscalo en tus descargas.":ok+" Excel listos, uno por paciente. Buscalos en tus descargas."):"Se descargaron "+ok+" de "+jobs.length+". Probá de nuevo.";}
     catch(e){flash="No se pudo armar el Excel. Revisá la conexión e intentá de nuevo.";}
     busy="";render(false);},
   psel(el){PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.confirm=false;flash="";render(false);},
