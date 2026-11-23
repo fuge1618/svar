@@ -439,6 +439,7 @@ function vPanel(){
       <button class="stat" data-a="go" data-v="pacientes"><b>${activos().length}</b><span>Pacientes activos</span></button>
     </div>
     ${fl()}${badBox()}
+    ${DB.pacs.length?"":'<div class="msg">Todavía no hay pacientes. Podés crear una ficha desde Pacientes, o cargar pacientes inventados para ver cómo funciona todo.</div><button class="btn pri" data-a="demo">Cargar pacientes de ejemplo</button>'}
     <section class="sec"><h2>Sesiones de hoy</h2>
       ${hoy.length?hoy.map(ctx).join(""):'<p class="note pad" style="padding-bottom:0">Sin sesiones cargadas para hoy.</p>'}
       <div class="pad"><div class="two"><button class="btn soft" data-a="go" data-v="sesion">Agregar sesión</button><button class="btn soft" data-a="go" data-v="agenda">Ver agenda</button></div></div></section>
@@ -567,6 +568,8 @@ function vHerr(){
       <div class="two"><button class="btn soft" data-a="dbexport">Exportar respaldo</button><label class="btn soft filebtn" for="d-import">Importar respaldo</label></div>
       <input type="file" id="d-import" accept="application/json,.json" hidden>
       ${hay?(V.confirm==="db"?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="dbwipe2">Sí, borrar todo</button></div>`:`<button class="btn danger" data-a="confirm" data-v="db">Borrar pacientes y resultados</button>`):""}</div></section>
+    <section class="sec"><h2>Datos de ejemplo</h2><div class="pad stack"><p class="note">Cinco pacientes inventados, con sesiones, notas, tareas y tests, para probar o mostrar la app.</p>
+      ${DB.pacs.some(p=>p.demo)?'<button class="btn soft" data-a="demorm">Quitar los datos de ejemplo</button>':'<button class="btn soft" data-a="demo">Cargar pacientes de ejemplo</button>'}</div></section>
     <section class="sec"><h2>Google Calendar</h2><div class="pad"><p class="note">Las sesiones se cargan en la agenda de Svar. La conexión con Google Calendar todavía no está disponible.</p></div></section>
     ${installBox()}
     <p class="note">Pacientes, sesiones y resultados quedan solo en este dispositivo. Al servidor de fuge1618 van únicamente los formularios en blanco que mandás, con tu nombre y mail, y los archivos que subís para que la app interprete un formulario nuevo.</p>
@@ -896,6 +899,29 @@ const ACT={
   tarrm(el){DB.tar=DB.tar.filter(y=>y.id!==el.dataset.t);dbSave();render(false);},
   resrev(){DB.res.forEach(x=>{if(x.pid===V.pk&&!x.rev)x.rev=today();});dbSave();V.topen=true;flash="Tests marcados como evaluados.";render(false);},
   allses(){V.allses=true;render(false);},
+  /* Datos de ejemplo: pacientes inventados para probar o mostrar la app. Se marcan con demo y se quitan de una vez. */
+  async demo(){if(DB.pacs.some(p=>p.demo)){flash="Los pacientes de ejemplo ya están cargados.";render(false);return;}
+    const t=today(),D=n=>dAdd(t,n),now=new Date(),hh=h=>pad(Math.min(21,Math.max(8,now.getHours()+h)))+":00";
+    if(!PRO.lib.length)PRO.lib.push({id:"demo",code:"EJEMPLO",intro:"Cuestionario inventado, solo para probar la app.",scale:["Nunca","A veces","Seguido","Siempre"],
+      items:["Me cuesta conciliar el sueño.","Me despierto durante la noche.","Me levanto cansado.","Uso pantallas antes de dormir.","Tomo café después de las 17.","Duermo siesta larga.","Me acuesto a horarios distintos.","Pienso en pendientes al acostarme."].map((x,i)=>({n:String(i+1),t:x})),
+      key:{src:"Clave de ejemplo (inventada)",ref:"",rules:[{n:["1","2","3","4","5","6","7","8"],p:[0,1,2,3]}],subs:[{name:"Sueño",n:["1","2","3"]},{name:"Hábitos",n:["4","5","6","7","8"]}]}});
+    const P=[["Ana Prueba","1988-03-02","F","Ejemplo. Evaluación diagnóstica en curso. Sin medicación. Objetivo: organizar rutinas y sueño."],["Bruno Ejemplo","1979-11-20","M","Ejemplo. Seguimiento mensual. Buena adherencia. Revisar esquema en la próxima consulta."],["Carla Demo","1995-06-14","F","Ejemplo. Primera consulta hace un mes. Pendiente completar formularios."],["Diego Muestra","2001-01-30","M","Ejemplo. Derivado por su psicóloga. Coordinar con el equipo tratante."],["Elena Ficticia","1969-09-08","F",""]]
+      .map((x,i)=>({id:"pd"+i+uid(),nombre:x[0],nac:x[1],sexo:x[2],tel:"",mail:"",nota:"",dx:x[3],activo:true,alta:D(-40),demo:true}));
+    DB.pacs.push(...P);const S=(i,f,h,nota,txt)=>DB.ses.push({id:"s"+uid(),pid:P[i].id,f,h,nota,txt:txt||"",dur:50,demo:true});
+    S(0,D(-14),"09:00","Primera entrevista","Motivo de consulta: dificultades de concentración y cansancio. Se indican cuestionarios para completar en casa.");
+    S(0,D(-7),"09:00","Seguimiento","Refiere mejor descanso. Persisten dificultades en reuniones de trabajo. Se acuerda registrar situaciones durante la semana.");
+    S(0,t,hh(1),"Devolución de tests","");S(1,D(-28),"10:00","Control","Estable. Sin efectos adversos. Continúa igual.");S(1,t,hh(2),"Control mensual","");
+    S(2,D(-30),"17:00","Primera consulta","Se envían formularios. Queda en completarlos antes de la próxima.");S(2,t,hh(3),"Seguimiento","");
+    S(3,D(1),"11:00","Entrevista con familia","");S(4,D(2),"16:00","Primera entrevista","");S(0,D(7),"09:00","Seguimiento","");S(1,D(28),"10:00","Control mensual","");S(3,D(8),"11:00","Seguimiento","");
+    DB.tar.push({id:"t"+uid(),t:"Preparar informe para la obra social de Bruno",f:D(2),done:"",demo:true},{id:"t"+uid(),t:"Llamar a la psicóloga de Diego",f:D(-1),done:"",demo:true});
+    const fs=PRO.lib.filter(f=>f.key).slice(0,2).concat(PRO.lib.filter(f=>!f.key).slice(0,1)).slice(0,2);
+    DB.env.push({id:"e"+uid(),pid:P[2].id,fecha:D(-30),codes:fs.map(f=>f.code),link:BASE,demo:true});
+    for(const k of [0,1]){const p=P[k],rec={v:1,i:p.id,x:"",p:{nombre:p.nombre,nac:p.nac,sexo:p.sexo},d:PRO.nombre,m:PRO.mat||"",e:PRO.mail,t:D(-3-k),
+        f:fs.map((f,j)=>Object.assign(toWire(f),{r:f.items.map((it,i)=>{const n=opts(f,it).length,v=(i*7+k*3+j*5+(i%3))%n;return it.multi?[v]:v;}),k:D(-3-k)}))};
+      const xs=await dbRead([{p:await pack(rec),n:"ejemplo",a:D(-3-k),pid:p.id,rev:k?D(-2):""}]);xs.forEach(x=>{x.demo=true;DB.res.push(x);});}
+    save();flash=dbSave()?"Se cargaron 5 pacientes de ejemplo, con sesiones, notas, tareas y tests. Son inventados; los quitás desde Ajustes.":"No se pudieron guardar los datos de ejemplo.";go("panel");flash="Se cargaron 5 pacientes de ejemplo. Son inventados; los quitás desde Ajustes.";render(false);},
+  demorm(){const ids=DB.pacs.filter(p=>p.demo).map(p=>p.id),has=x=>ids.includes(x.pid);DB.pacs=DB.pacs.filter(p=>!p.demo);DB.ses=DB.ses.filter(x=>!has(x));DB.env=DB.env.filter(x=>!has(x));DB.res=DB.res.filter(x=>!has(x));DB.tar=DB.tar.filter(x=>!x.demo);
+    PRO.lib=PRO.lib.filter(f=>f.id!=="demo");save();dbSave();flash="Se quitaron los datos de ejemplo.";render(false);},
   nav(){NAVOPEN=!NAVOPEN;document.getElementById("app").classList.toggle("open",NAVOPEN);},
   calnav(el){const k=+el.dataset.v;if(CAL.mode==="sem")CAL.d=dAdd(CAL.d,7*k);else{const d=new Date(CAL.d.slice(0,7)+"-01T12:00:00");d.setMonth(d.getMonth()+k);CAL.d=dISO(d);}render(false);},
   calhoy(){CAL.d=today();render(false);},
