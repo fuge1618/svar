@@ -203,6 +203,76 @@ textarea.ta{min-height:64px;font-family:inherit;font-size:15px}
 .edr input,.edr textarea{min-width:0;flex:1}
 .chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);margin:0}
 .chk input{width:20px;height:20px}
+#app.shell{max-width:none;padding:0;flex-direction:row;align-items:flex-start}
+.shell .page{flex:1;min-width:0;max-width:592px;margin:0 auto;padding:0 16px;display:flex;flex-direction:column;min-height:100vh}
+.shell .page.wide{max-width:1180px}
+.side{width:232px;flex:none;border-right:1px solid var(--line);background:var(--surface);padding:18px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;z-index:20}
+.side .sb{display:flex;align-items:center;gap:10px;padding:4px 8px 18px}
+.side .sb svg{width:28px;height:28px}
+.side .name{font-size:20px;font-weight:600;line-height:1}
+.side .by{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px}
+.navi{display:flex;align-items:center;gap:12px;padding:11px 12px;border:0;background:none;border-radius:8px;color:var(--ink);font:inherit;text-align:left;width:100%}
+.navi svg{width:20px;height:20px;flex:none;color:var(--muted)}
+.navi:hover{background:var(--bg)}
+.navi.on{background:var(--bg);font-weight:600;box-shadow:inset 3px 0 0 var(--accent)}
+.navi.on svg{color:var(--ink)}
+.navi .n{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:400}
+.side .foot{margin-top:auto;font-size:12px;color:var(--muted);padding:8px;overflow-wrap:anywhere}
+.scrim{display:none}
+.burger{display:none}
+.brand .bm{display:none}
+.caltb{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.caltb .calt{flex:1;font-weight:600;font-size:18px;min-width:150px;padding:0 6px;text-transform:capitalize}
+.wstrip{display:none;grid-template-columns:repeat(7,1fr);gap:4px}
+.wd{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;min-height:66px}
+.wd span{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.wd b{font-size:17px}
+.wd i{font-style:normal;font-size:10px;font-family:var(--mono);min-height:14px;min-width:14px;border-radius:7px;background:var(--accent);color:var(--on-accent);padding:0 3px;line-height:14px}
+.wd i:empty{background:none}
+.wd.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.wd.hoy b,.wch b,.mc.hoy b{}
+.wd.hoy span{color:var(--accent);font-weight:600}
+.wcols{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;min-height:440px}
+.wcol{border-right:1px solid var(--line);padding:0 6px 8px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.wcol:last-child{border-right:0}
+.wch{display:flex;align-items:baseline;gap:6px;padding:10px 4px;border-bottom:1px solid var(--line);margin:0 -6px 2px;padding-left:10px}
+.wch span{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase}
+.wch b{font-size:18px}
+.wcol.hoy .wch{box-shadow:inset 0 3px 0 var(--accent)}
+.wcol.hoy .wch span{color:var(--accent);font-weight:600}
+.chip{display:flex;flex-direction:column;gap:1px;text-align:left;border:0;border-left:3px solid var(--accent);background:var(--bg);border-radius:6px;padding:7px 8px;color:var(--ink);font:inherit;font-size:13px;min-width:0}
+.chip span{font-size:11px;color:var(--muted)}
+.chip b{overflow-wrap:anywhere;font-weight:600}
+.chip small{color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.addc{margin-top:auto;border:1px dashed var(--line);background:none;border-radius:6px;color:var(--muted);padding:6px;font:inherit}
+.addc:hover{border-color:var(--accent);color:var(--ink)}
+.dlist.semd{display:none}
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.mh{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;padding:8px;border-bottom:1px solid var(--line)}
+.mc{position:relative;display:flex;flex-direction:column;gap:2px;align-items:stretch;text-align:left;min-height:92px;padding:6px;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:none;color:var(--ink);font:inherit;min-width:0}
+.mc:nth-child(7n){border-right:0}
+.mc b{font-size:14px;font-weight:500}
+.mc.out b{color:var(--muted);opacity:.5}
+.mc.hoy b{color:var(--accent);font-weight:700}
+.mc.on{box-shadow:inset 0 0 0 2px var(--accent)}
+.mc .ml{font-size:11px;background:var(--bg);border-left:2px solid var(--accent);border-radius:3px;padding:1px 4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.mc i{display:none}
+@media(max-width:899px){
+.side{position:fixed;left:0;top:0;transform:translateX(-102%);transition:transform .2s;width:260px}
+.shell.open .side{transform:none;box-shadow:0 0 40px rgba(0,0,0,.35)}
+.shell.open .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:19}
+.burger{display:grid}
+.ghost.burger{display:block}
+.deskgap{display:none}
+.brand .bm{display:block}
+.wstrip{display:grid}
+.wcols{display:none}
+.dlist.semd{display:block}
+.caltb .calt{order:-1;flex-basis:100%;padding:0}
+.mc{min-height:52px;align-items:center;padding:6px 2px}
+.mc .ml{display:none}
+.mc i{display:block;font-style:normal;font-size:10px;font-family:var(--mono);background:var(--accent);color:var(--on-accent);border-radius:7px;min-width:14px;line-height:14px;text-align:center;padding:0 3px}
+}
 </style>
 </head>
 <body>
@@ -322,7 +392,7 @@ const sesSort=(a,b)=>(a.f+(a.h||"")).localeCompare(b.f+(b.h||""));
 const dlabel=f=>{try{return new Date(f+"T12:00:00").toLocaleDateString("es-AR",{weekday:"short",day:"numeric",month:"numeric"});}catch(e){return fdate(f);}};
 const dias=f=>Math.max(0,Math.round((new Date(today()+"T12:00:00")-new Date(f+"T12:00:00"))/864e5));
 const hace=f=>{const d=dias(f);return d===0?"hoy":d===1?"ayer":"hace "+d+" días";};
-const bar=(t,back,cnt)=>`<header class="bar"><button class="ghost" data-a="${back?"go":"home"}"${back?` data-v="${back[0]}" data-k="${esc(back[2]||"")}"`:""}>‹ ${back?back[1]:"Inicio"}</button><div class="t">${t}</div><div class="cnt mono">${cnt==null?"":cnt}</div></header>`;
+const bar=(t,back,cnt)=>`<header class="bar">${back?`<button class="ghost" data-a="go" data-v="${back[0]}" data-k="${esc(back[2]||"")}">‹ ${back[1]}</button>`:'<button class="ghost burger" data-a="nav" aria-label="Abrir menú">☰ Menú</button><span class="ghost deskgap"></span>'}<div class="t">${t}</div><div class="cnt mono">${cnt==null?"":cnt}</div></header>`;
 const rtag=t=>`<span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none">${t}</span>`;
 const fl=role=>flash?`<div class="msg" role="${role||"status"}">${flash}</div>`:"";
 const loadBtn=(pri,label)=>`<label class="btn ${pri?"pri":"soft"} filebtn" for="a-files">${label||"Cargar resultados (PDF)"}</label><input type="file" id="a-files" accept="application/pdf,.pdf" multiple hidden>`;
@@ -335,21 +405,20 @@ const libPick=()=>`<div class="opts" role="group" aria-label="Formularios para e
 function vPanel(){
   const ok=s=>pac(s.pid),hoy=DB.ses.filter(s=>s.f===today()&&ok(s)).sort(sesSort),prox=DB.ses.filter(s=>s.f>today()&&ok(s)).sort(sesSort).slice(0,5),pen=pendientes(),
     ult=DB.res.filter(x=>pac(x.pid)).sort((a,b)=>String(b.a).localeCompare(String(a.a))).slice(0,5);
-  return brand()+`<main>${noStore()}
+  return `<div class="brand"><button class="icon burger" data-a="nav" aria-label="Abrir menú">☰</button><span class="bm">${MARK}</span><div><div class="name">Inicio</div><div class="by">${esc(dlabel(today()))} · ${esc(PRO.nombre)}</div></div></div><main>${noStore()}
     <div class="stats">
       <button class="stat" data-a="go" data-v="pacientes"><b>${activos().length}</b><span>Pacientes activos</span></button>
-      <div class="stat"><b>${hoy.length}</b><span>Sesiones hoy</span></div>
+      <button class="stat" data-a="go" data-v="agenda"><b>${hoy.length}</b><span>Sesiones hoy</span></button>
       <div class="stat"><b>${pen.length}</b><span>Envíos sin responder</span></div>
     </div>
     ${fl()}${badBox()}
     <section class="sec"><h2>Hoy ${rtag(esc(dlabel(today())))}</h2>
       ${hoy.length?hoy.map(s=>sesRow(s,false,true)).join(""):'<p class="note pad">Sin sesiones cargadas para hoy.</p>'}
-      <div class="pad"><button class="btn soft" style="width:100%" data-a="go" data-v="sesion">Agregar sesión</button></div></section>
+      <div class="pad"><div class="two"><button class="btn soft" data-a="go" data-v="sesion">Agregar sesión</button><button class="btn soft" data-a="go" data-v="agenda">Ver agenda</button></div></div></section>
     ${prox.length?`<section class="sec"><h2>Próximas sesiones</h2>${prox.map(s=>sesRow(s,true,true)).join("")}</section>`:""}
     ${pen.length?`<section class="sec"><h2>Esperando respuesta</h2>${pen.map(o=>`<button class="lrow" data-a="go" data-v="paciente" data-k="${esc(o.p.id)}"><span class="g">${esc(o.p.nombre)}<small class="mono">${o.falta.map(esc).join(" · ")}</small></span><span class="mono h" style="min-width:0">${hace(o.e.fecha)}</span><span class="ch">›</span></button>`).join("")}</section>`:""}
     ${ult.length?`<section class="sec"><h2>Últimos resultados</h2>${ult.map(x=>`<button class="lrow" data-a="go" data-v="paciente" data-k="${esc(x.pid)}"><span class="g">${esc(pac(x.pid).nombre)}<small class="mono">${x.rec.forms.map(f=>esc(f.code)).join(" · ")}</small></span><span class="mono h" style="min-width:0">${esc(fdate(x.a))}</span><span class="ch">›</span></button>`).join("")}</section>`:""}
     ${loadBtn(true)}
-    <div class="two"><button class="btn" data-a="go" data-v="pacientes">Pacientes</button><button class="btn" data-a="go" data-v="herr">Herramientas</button></div>
   </main>`;
 }
 function vPacientes(){
@@ -406,7 +475,7 @@ function vPaciente(){
       ${PRO.lib.length?`<p class="note">Tildá los que querés mandarle. El link ya lleva sus datos.</p>${libPick()}
         <button class="btn pri" data-a="paclink" ${n&&!busy?"":"disabled"}>${busy==="link"?"Creando el link…":n?"Crear link con "+n+(n===1?" formulario":" formularios"):"Marcá al menos uno"}</button>
         ${V.linkmsg?`<div class="msg" role="status">${V.linkmsg}</div>`:""}${linkBox()}`
-      :'<div class="msg">Todavía no tenés formularios. Agregalos desde Herramientas.</div>'}</div>
+      :'<div class="msg">Todavía no tenés formularios. Agregalos desde Formularios.</div>'}</div>
       ${envs.map(e=>{const fa=envFalta(e);return `<div class="lrow"><span class="g"><span class="mono">${e.codes.map(esc).join(" · ")}</span><small>Enviado el ${esc(fdate(e.fecha))} · ${fa.length?(fa.length<e.codes.length?"falta "+fa.map(esc).join(", "):"sin responder"):"recibido"}</small></span><button class="btn soft mini" data-a="envcp" data-e="${esc(e.id)}">Copiar link</button><button class="btn soft mini" data-a="envrm" data-e="${esc(e.id)}" aria-label="Quitar envío">✕</button></div>`;}).join("")}</section>
     ${res||'<div class="msg">Todavía no hay resultados de este paciente.</div>'}
     ${hayClave?'<p class="note">Los puntajes salen de tus claves y son orientativos, sin interpretación. La lectura clínica es tuya.</p>':""}
@@ -419,23 +488,24 @@ function vPaciente(){
 }
 function vSesion(){
   const s=V.sid?DB.ses.find(x=>x.id===V.sid):null,pk=s?s.pid:V.pk,ps=activos();if(pk&&pac(pk)&&!ps.includes(pac(pk)))ps.push(pac(pk));
-  const head=bar(s?"Sesión":"Nueva sesión",V.pk?["paciente","Ficha",V.pk]:null);
+  const head=bar(s?"Sesión":"Nueva sesión",V.pk?["paciente","Ficha",V.pk]:["agenda","Agenda"]);
   if(!ps.length)return head+`<main><div class="msg">Primero cargá un paciente.</div><button class="btn pri" data-a="go" data-v="pacedit">Nuevo paciente</button></main>`;
   return head+`<main>
     <p class="field"><label for="s-pac">Paciente</label><select id="s-pac">${ps.map(p=>`<option value="${esc(p.id)}"${p.id===pk?" selected":""}>${esc(p.nombre)}</option>`).join("")}</select></p>
-    <p class="field"><label for="s-f">Fecha</label><input type="date" id="s-f" value="${esc(s?s.f:today())}"></p>
-    <p class="field"><label for="s-h">Hora</label><input type="time" id="s-h" value="${esc(s?s.h:"")}"></p>
+    <p class="field"><label for="s-f">Fecha</label><input type="date" id="s-f" value="${esc(s?s.f:V.fd||today())}"></p>
+    <div class="two"><p class="field"><label for="s-h">Hora</label><input type="time" id="s-h" value="${esc(s?s.h:"")}"></p>
+      <p class="field"><label for="s-d">Duración</label><select id="s-d">${[30,45,50,60,90].map(m=>`<option value="${m}"${(s&&s.dur||50)===m?" selected":""}>${m} min</option>`).join("")}</select></p></div>
     <p class="field"><label for="s-n">Nota (opcional)</label><input type="text" id="s-n" value="${esc(s?s.nota:"")}"></p>
     ${fl("alert")}
     <button class="btn pri" data-a="sessave">Guardar</button>
     ${s?`<button class="btn soft" data-a="go" data-v="paciente" data-k="${esc(s.pid)}">Ver ficha</button><button class="btn danger" data-a="sesrm">Quitar sesión</button>`:""}
   </main>`;
 }
-function vHerr(){
-  const lib=PRO.lib,hay=DB.pacs.length||DB.res.length;
-  return bar("Herramientas")+`<main>
+function vForms(){
+  const lib=PRO.lib;
+  return bar("Formularios",null,lib.length||"")+`<main>
     ${fl()}
-    <section class="sec"><h2>Mis formularios ${rtag(lib.length||"")}</h2>
+    <section class="sec"><h2>Mis formularios</h2>
       ${lib.map(f=>`<button class="lrow" data-a="go" data-v="form" data-f="${esc(f.id)}"><span class="g"><span class="mono">${esc(f.code)}</span><small>${f.items.length} preguntas · ${f.key?"con clave de evaluación":"sin clave"}</small></span><span class="ch">›</span></button>`).join("")}
       <div class="pad stack">${lib.length?"":'<p class="note">Los cargás una vez y se los mandás a cualquier paciente desde su ficha.</p>'}
         <button class="btn pri" data-a="go" data-v="agregar">Agregar formulario</button>
@@ -444,20 +514,58 @@ function vHerr(){
     <section class="sec"><h2>Enviar sin ficha</h2><div class="pad stack">
       <p class="note">Para encuestas o personas que no son pacientes: el link le pide los datos a quien responde.</p>
       <button class="btn soft" data-a="go" data-v="abierto" ${lib.length?"":"disabled"}>Crear link abierto</button></div></section>
+  </main>`;
+}
+function vHerr(){
+  const hay=DB.pacs.length||DB.res.length;
+  return bar("Ajustes")+`<main>
+    ${fl()}
+    <section class="sec"><h2>Cuenta</h2><div class="pad stack"><dl class="datos"><dt>Profesional</dt><dd>${esc(PRO.nombre)}</dd><dt>Mail</dt><dd>${esc(PRO.mail)}</dd>${PRO.mat?`<dt>Matrícula</dt><dd>${esc(PRO.mat)}</dd>`:""}</dl>
+      <div class="two"><button class="btn soft" data-a="go" data-v="perfil">Mi perfil</button><button class="btn soft" data-a="go" data-v="config">Apariencia</button></div></div></section>
     <section class="sec"><h2>Respaldo</h2><div class="pad stack">
       <p class="note">Un archivo con tus pacientes, sesiones, resultados y formularios. Sirve de copia de seguridad y para pasar todo a otro dispositivo. Contiene datos de salud y no va cifrado: guardalo en un lugar seguro.</p>
       <div class="two"><button class="btn soft" data-a="dbexport">Exportar respaldo</button><label class="btn soft filebtn" for="d-import">Importar respaldo</label></div>
       <input type="file" id="d-import" accept="application/json,.json" hidden>
       ${hay?(V.confirm==="db"?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="dbwipe2">Sí, borrar todo</button></div>`:`<button class="btn danger" data-a="confirm" data-v="db">Borrar pacientes y resultados</button>`):""}</div></section>
-    <section class="sec"><h2>Agenda</h2><div class="pad"><p class="note">Las sesiones se cargan a mano desde el inicio o desde cada ficha. La conexión con Google Calendar todavía no está disponible.</p></div></section>
-    <section class="sec"><h2>Cuenta</h2><div class="pad"><div class="two"><button class="btn soft" data-a="go" data-v="perfil">Mi perfil</button><button class="btn soft" data-a="go" data-v="config">Apariencia</button></div></div></section>
+    <section class="sec"><h2>Google Calendar</h2><div class="pad"><p class="note">Las sesiones se cargan en la agenda de Svar. La conexión con Google Calendar todavía no está disponible.</p></div></section>
     ${installBox()}
     <p class="note">Pacientes, sesiones y resultados quedan solo en este dispositivo. Al servidor de fuge1618 van únicamente los formularios en blanco que mandás, con tu nombre y mail, y los archivos que subís para que la app interprete un formulario nuevo.</p>
   </main>`;
 }
+/* Agenda: semana o mes. En pantallas anchas la semana se ve en siete columnas; en el teléfono, tira de días y lista del día elegido. */
+let CAL={d:"",mode:"sem"},NAVOPEN=false;
+const dISO=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const dAdd=(s,n)=>{const d=new Date(s+"T12:00:00");d.setDate(d.getDate()+n);return dISO(d);};
+const monday=s=>dAdd(s,-((new Date(s+"T12:00:00").getDay()+6)%7));
+const DOW=["lun","mar","mié","jue","vie","sáb","dom"],MES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const sesOf=f=>DB.ses.filter(s=>s.f===f&&pac(s.pid)).sort(sesSort);
+const hfin=s=>{if(!s.h)return"";const a=s.h.split(":").map(Number),m=a[0]*60+a[1]+(s.dur||50);return pad(Math.floor(m/60)%24)+":"+pad(m%60);};
+const chip=s=>`<button class="chip" data-a="go" data-v="sesion" data-s="${esc(s.id)}"><span class="mono">${esc(s.h||"--:--")}${s.h?"–"+hfin(s):""}</span><b>${esc(pac(s.pid).nombre)}</b>${s.nota?`<small>${esc(s.nota)}</small>`:""}</button>`;
+function vAgenda(){
+  const d=CAL.d||(CAL.d=today()),t=today(),sem=CAL.mode==="sem",ym=d.slice(0,7),start=monday(sem?d:ym+"-01"),days=Array.from({length:sem?7:42},(_,i)=>dAdd(start,i));
+  const title=sem?(+days[0].slice(8))+" – "+(+days[6].slice(8))+" "+MES[+days[6].slice(5,7)-1].slice(0,3)+" "+days[6].slice(0,4):MES[+d.slice(5,7)-1]+" "+d.slice(0,4),sel=sesOf(d);
+  return bar("Agenda")+`<main>
+    <div class="caltb"><button class="btn soft mini" data-a="calnav" data-v="-1" aria-label="Anterior">‹</button><button class="btn soft mini" data-a="calhoy">Hoy</button><button class="btn soft mini" data-a="calnav" data-v="1" aria-label="Siguiente">›</button>
+      <span class="calt">${title}</span>
+      <button class="btn soft mini seg${sem?" on":""}" data-a="calmode" data-v="sem">Semana</button><button class="btn soft mini seg${sem?"":" on"}" data-a="calmode" data-v="mes">Mes</button>
+      <button class="btn pri mini" data-a="go" data-v="sesion" data-d="${d}">+ Sesión</button></div>
+    ${sem?`<div class="wstrip">${days.map((x,i)=>{const n=sesOf(x).length;return `<button class="wd${x===d?" on":""}${x===t?" hoy":""}" data-a="calday" data-d="${x}"><span>${DOW[i]}</span><b>${+x.slice(8)}</b><i>${n||""}</i></button>`;}).join("")}</div>
+      <div class="wcols">${days.map((x,i)=>`<div class="wcol${x===t?" hoy":""}"><div class="wch"><span>${DOW[i]}</span><b>${+x.slice(8)}</b></div>${sesOf(x).map(chip).join("")}<button class="addc" data-a="go" data-v="sesion" data-d="${x}" aria-label="Agregar sesión el ${DOW[i]} ${+x.slice(8)}">+</button></div>`).join("")}</div>`
+    :`<div class="mgrid">${DOW.map(x=>`<div class="mh">${x}</div>`).join("")}${days.map(x=>{const ss=sesOf(x);return `<button class="mc${x.slice(0,7)===ym?"":" out"}${x===d?" on":""}${x===t?" hoy":""}" data-a="calday" data-d="${x}"><b>${+x.slice(8)}</b>${ss.slice(0,3).map(s=>`<span class="ml">${esc(s.h||"")} ${esc(pac(s.pid).nombre.split(" ")[0])}</span>`).join("")}${ss.length>3?`<span class="ml">+${ss.length-3}</span>`:""}${ss.length?`<i>${ss.length}</i>`:""}</button>`;}).join("")}</div>`}
+    <section class="sec dlist${sem?" semd":""}"><h2>${esc(dlabel(d))} ${rtag(sel.length?sel.length+(sel.length===1?" sesión":" sesiones"):"")}</h2>
+      ${sel.length?sel.map(s=>sesRow(s,false,true)).join(""):'<p class="note pad" style="padding-bottom:0">Sin sesiones este día.</p>'}
+      <div class="pad"><button class="btn soft" style="width:100%" data-a="go" data-v="sesion" data-d="${d}">Agregar sesión este día</button></div></section>
+  </main>`;
+}
+const NAV=[["panel","Inicio","M4 11l8-7 8 7v9H4z"],["agenda","Agenda","M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"],["pacientes","Pacientes","M12 12a4 4 0 100-8 4 4 0 000 8zM4 20c1-4 4-6 8-6s7 2 8 6"],["forms","Formularios","M6 3h9l4 4v14H6zM9 12h7M9 16h7M9 8h3"],["herr","Ajustes","M4 7h8M18 7h2M4 17h2M12 17h8M15 4.4a2.6 2.6 0 100 5.2 2.6 2.6 0 000-5.2zM9 14.4a2.6 2.6 0 100 5.2 2.6 2.6 0 000-5.2z"]];
+const NAVOF={paciente:"pacientes",pacedit:"pacientes",sesion:"agenda",form:"forms",agregar:"forms",editor:"forms",abierto:"forms",perfil:"herr",config:"herr"};
+function sideNav(){const cur=NAVOF[V.name]||V.name,n={agenda:sesOf(today()).length,pacientes:activos().length,forms:PRO.lib.length};
+  return `<nav class="side" aria-label="Menú"><div class="sb">${MARK}<div><div class="name">Svar</div><div class="by">by fuge1618</div></div></div>
+    ${NAV.map(x=>`<button class="navi${cur===x[0]?" on":""}" data-a="go" data-v="${x[0]}"${cur===x[0]?' aria-current="page"':""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${x[2]}"/></svg>${x[1]}${n[x[0]]?`<span class="n">${n[x[0]]}</span>`:""}</button>`).join("")}
+    <div class="foot">${esc(PRO.nombre)}</div></nav><div class="scrim" data-a="nav"></div>`;}
 function vAbierto(){
   const n=picked().length;
-  return bar("Link abierto",["herr","Herramientas"])+`<main>
+  return bar("Link abierto",["forms","Formularios"])+`<main>
     <p class="note">Quien abra este link carga su nombre, nacimiento y sexo antes de responder. Cuando te mande el PDF, cargalo y se arma su ficha.</p>
     ${libPick()}
     <button class="btn pri" data-a="mklink" ${n&&!busy?"":"disabled"}>${busy==="link"?"Creando el link…":n?"Crear link con "+n+(n===1?" formulario":" formularios"):"Marcá al menos uno"}</button>
@@ -465,8 +573,8 @@ function vAbierto(){
   </main>`;
 }
 function vForm(){
-  const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return vHerr();const k=f.key;
-  return bar(`<span class="mono">${esc(f.code)}</span>`,["herr","Herramientas"],f.items.length+" preg.")+`<main>
+  const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return vForms();const k=f.key;
+  return bar(`<span class="mono">${esc(f.code)}</span>`,["forms","Formularios"],f.items.length+" preg.")+`<main>
     ${fl()}
     <section class="sec"><h2>Formato</h2>
       <table><tbody>${f.items.slice(0,3).map(it=>`<tr><td class="n">${esc(it.n)}</td><td>${esc(it.t)}<span class="ans none">${opts(f,it).map(esc).join(" · ")}</span></td></tr>`).join("")}
@@ -481,7 +589,7 @@ function vForm(){
   </main>`;
 }
 function vAgregar(){
-  return bar("Agregar formulario",["herr","Herramientas"])+`<main>
+  return bar("Agregar formulario",["forms","Formularios"])+`<main>
     <p style="margin:0">Subí el formulario en blanco: fotos, PDF o texto, también de anotaciones a mano. Si tenés la clave de evaluación, sumala. Svar lo interpreta y después lo revisás antes de guardarlo.</p>
     <label class="btn soft filebtn" for="ag-files">${AG.files.length?"Agregar más archivos":"Elegir fotos o PDF"}</label>
     <input type="file" id="ag-files" accept="image/*,application/pdf" multiple hidden>
@@ -528,7 +636,7 @@ function edBuild(){const sc=lines(ED.scale),items=[],seen={},P={};
   else if(sl.length)return{err:"Cargaste subescalas pero ninguna pregunta tiene puntos."};
   return{f};}
 function vEditor(){
-  if(!ED)return vHerr();
+  if(!ED)return vForms();
   return `<header class="bar"><button class="ghost" data-a="edcancel">‹ Cancelar</button><div class="t">${ED.id?"Editar formulario":"Nuevo formulario"}</div><div class="cnt mono">${ED.items.length} preg.</div></header>
   <main>
     ${ED.ai?'<div class="msg">Esto lo interpretó una IA y puede tener errores. Comparalo con el original: cantidad de preguntas, textos, opciones y puntos. Queda guardado recién cuando tocás Guardar.</div>':""}
@@ -696,13 +804,14 @@ function vConfig(){
   </main>`;
 }
 function vRoto(){return brand()+`<main><h1 class="big">Este link está incompleto</h1><p style="margin:0">Puede haberse cortado al copiarlo. Pedile a tu profesional que te lo mande de nuevo.</p><button class="btn soft" data-a="topro">Soy profesional: abrir Svar</button></main>`;}
-const VIEWS={panel:vPanel,form:vForm,pacientes:vPacientes,paciente:vPaciente,pacedit:vPacEdit,sesion:vSesion,herr:vHerr,abierto:vAbierto,editor:vEditor,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed,config:vConfig};
-function render(top){document.getElementById("app").innerHTML=VIEWS[V.name]();if(top)window.scrollTo(0,0);}
+const VIEWS={panel:vPanel,form:vForm,pacientes:vPacientes,paciente:vPaciente,pacedit:vPacEdit,sesion:vSesion,herr:vHerr,forms:vForms,agenda:vAgenda,abierto:vAbierto,editor:vEditor,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed,config:vConfig};
+function render(top){const html=VIEWS[V.name](),app=document.getElementById("app"),shell=MODE==="pro"&&profOk()&&V.name!=="roto"&&V.name!=="sinred";
+  app.className=shell?"shell"+(NAVOPEN?" open":""):"";app.innerHTML=shell?sideNav()+`<div class="page${V.name==="agenda"?" wide":""}">${html}</div>`:html;if(top)window.scrollTo(0,0);}
 function goForm(id){go("form",{fid:id});}
 function go(name,extra){
   if(MODE==="pac"&&!datosOk())name="datos";
   if(MODE==="pro"&&!profOk())name="perfil";
-  V=Object.assign({name},extra||{});flash="";render(true);}
+  V=Object.assign({name},extra||{});flash="";if(typeof NAVOPEN!=="undefined")NAVOPEN=false;render(true);}
 const home=()=>MODE==="pac"?"inicio":"panel";
 
 /* ---------- acciones ---------- */
@@ -712,7 +821,7 @@ function next(){const f=F(V.fid);if(V.i<f.items.length-1)go("q",{fid:V.fid,i:V.i
 async function copyText(t){try{await navigator.clipboard.writeText(t);return true;}catch(e){return false;}}
 const ACT={
   home(){draft=null;go(home());},
-  go(el){const d=el.dataset;if(MODE==="pro"&&(d.v==="paciente"||d.v==="abierto")&&V.name!==d.v)Object.keys(PSEL).forEach(k=>delete PSEL[k]);go(d.v,{pk:d.k||"",fid:d.f||"",sid:d.s||""});},
+  go(el){const d=el.dataset;if(MODE==="pro"&&(d.v==="paciente"||d.v==="abierto")&&V.name!==d.v)Object.keys(PSEL).forEach(k=>delete PSEL[k]);go(d.v,{pk:d.k||"",fid:d.f||"",sid:d.s||"",fd:d.d||""});},
   open(el){openForm(el.dataset.f);},
   start(){go("q",{fid:V.fid,i:0});},
   goto(el){go("q",{fid:el.dataset.f,i:+el.dataset.i});},
@@ -742,6 +851,11 @@ const ACT={
   async cpmail(){const ok=await copyText(P.e);flash=ok?"Mail copiado.":"No se pudo copiar. Mantené apretada la dirección para copiarla.";render(false);},
   /* profesional */
   confirm(el){V.confirm=el.dataset.v;render(false);},
+  nav(){NAVOPEN=!NAVOPEN;document.getElementById("app").classList.toggle("open",NAVOPEN);},
+  calnav(el){const k=+el.dataset.v;if(CAL.mode==="sem")CAL.d=dAdd(CAL.d,7*k);else{const d=new Date(CAL.d.slice(0,7)+"-01T12:00:00");d.setMonth(d.getMonth()+k);CAL.d=dISO(d);}render(false);},
+  calhoy(){CAL.d=today();render(false);},
+  calday(el){CAL.d=el.dataset.d;render(false);},
+  calmode(el){CAL.mode=el.dataset.v;render(false);},
   pacsave(){const g=id=>document.getElementById(id).value.trim(),d={nombre:g("pe-nombre"),nac:g("pe-nac"),sexo:g("pe-sexo"),tel:g("pe-tel"),mail:g("pe-mail"),nota:g("pe-nota")};
     if(!d.nombre){V.d=d;flash="Falta el nombre.";render(false);return;}
     let p=pac(V.pk);if(p)Object.assign(p,d);else{p=Object.assign({id:"p"+uid(),activo:true,alta:today()},d);DB.pacs.push(p);}
@@ -750,9 +864,9 @@ const ACT={
   pacrm2(){const id=V.pk;DB.pacs=DB.pacs.filter(p=>p.id!==id);DB.ses=DB.ses.filter(s=>s.pid!==id);DB.env=DB.env.filter(e=>e.pid!==id);DB.res=DB.res.filter(x=>x.pid!==id);dbSave();go("pacientes");flash="Ficha borrada de este dispositivo.";render(false);},
   sessave(){const pid=document.getElementById("s-pac").value,f=document.getElementById("s-f").value,h=document.getElementById("s-h").value,nota=document.getElementById("s-n").value.trim();
     if(!f){flash="Falta la fecha.";render(false);return;}
-    let s=V.sid&&DB.ses.find(x=>x.id===V.sid);if(s)Object.assign(s,{pid,f,h,nota});else DB.ses.push({id:"s"+uid(),pid,f,h,nota});
-    dbSave();if(V.pk)go("paciente",{pk:V.pk});else go("panel");},
-  sesrm(){DB.ses=DB.ses.filter(x=>x.id!==V.sid);dbSave();if(V.pk)go("paciente",{pk:V.pk});else go("panel");},
+    let s=V.sid&&DB.ses.find(x=>x.id===V.sid);const dur=+document.getElementById("s-d").value||50;if(s)Object.assign(s,{pid,f,h,nota,dur});else DB.ses.push({id:"s"+uid(),pid,f,h,nota,dur});
+    dbSave();if(V.pk)go("paciente",{pk:V.pk});else{CAL.d=f;go("agenda");}},
+  sesrm(){DB.ses=DB.ses.filter(x=>x.id!==V.sid);dbSave();if(V.pk)go("paciente",{pk:V.pk});else go("agenda");},
   psel(el){PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.linkmsg="";flash="";render(false);},
   async paclink(){const p=pac(V.pk),fs=picked();if(!p||!fs.length)return;busy="link";V.link="";V.linkmsg="";render(false);
     const packed=await pack({e:PRO.mail.trim(),d:PRO.nombre.trim(),m:(PRO.mat||"").trim(),p:PAL||"",f:fs.map(toWire)});let id="",why="";
@@ -784,7 +898,7 @@ const ACT={
   openlink(){location.href=V.link;},
   async exportlib(){const r=await saveFile("formularios-svar.json",new Blob([JSON.stringify({svar:1,forms:PRO.lib},null,1)],{type:"application/json"}));flash=r==="saved"?"Formularios descargados, con sus claves. No incluye pacientes.":"No se pudo descargar.";render(false);},
   /* formularios */
-  formrm2(){PRO.lib=PRO.lib.filter(f=>f.id!==V.fid);save();go("herr");flash="Formulario quitado. Los resultados ya cargados se conservan.";render(false);},
+  formrm2(){PRO.lib=PRO.lib.filter(f=>f.id!==V.fid);save();go("forms");flash="Formulario quitado. Los resultados ya cargados se conservan.";render(false);},
   ededit(){const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return;ED=edFrom(f,false);go("editor",{fid:f.id});},
   edblank(){agRead();ED=edFrom({code:"",items:[{n:"1",t:""}]},false);go("editor");},
   edcancel(){const id=ED&&ED.id;ED=null;if(id)go("form",{fid:id});else go("agregar");},
