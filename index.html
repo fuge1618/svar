@@ -271,6 +271,9 @@ function vPro(){
       <input type="file" id="p-import" accept="application/json,.json" hidden>
       ${lib.length?`<div class="two"><button class="btn soft" data-a="exportlib">Exportar biblioteca</button>${V.confirm?`<button class="btn" data-a="rm2">Sí, quitar ${n}</button>`:`<button class="btn danger" data-a="rm" ${n?"":"disabled"}>Quitar marcados</button>`}</div>`:""}
     </div></section>
+    <section class="sec"><h2>Resultados</h2><div class="pad stack">
+      <p class="note">Cuando recibas los PDF de tus pacientes, cargalos acá para obtener el Excel.</p>
+      <button class="btn" data-a="go" data-v="analizar">Analizar resultados</button></div></section>
     <section class="sec"><h2>Link para el paciente</h2><div class="pad stack">
       <dl class="datos"><dt>Profesional</dt><dd>${esc(PRO.nombre)}</dd><dt>Mail</dt><dd>${esc(PRO.mail)}</dd>${PRO.mat?`<dt>Matrícula</dt><dd>${esc(PRO.mat)}</dd>`:""}</dl>
       <p class="note">El paciente va a ver estos datos como remitente, y las respuestas van a este mail.</p>
@@ -295,6 +298,23 @@ function vPerfil(){
     <p class="field"><label for="pf-mat">Matrícula (opcional)</label><input type="text" id="pf-mat" value="${esc(PRO.mat)}" placeholder="M.N. 000000"></p>
     ${flash?`<div class="msg" role="alert">${flash}</div>`:""}
     <button class="btn pri" data-a="saveperfil">${first?"Guardar y seguir":"Guardar"}</button>
+  </main>`;
+}
+let AN={recs:[],bad:[]};
+function vAnalizar(){
+  const n=AN.recs.length,pac=new Set(AN.recs.map(x=>x.rec.perfil.nombre)).size;
+  return `<header class="bar"><button class="ghost" data-a="home">‹ Volver</button><div class="t">Analizar resultados</div><div class="cnt"></div></header>
+  <main>
+    <p style="margin:0">Cargá los PDF que te mandaron tus pacientes. Svar lee las respuestas que cada PDF trae adentro y arma un Excel listo para analizar.</p>
+    <label class="btn pri filebtn" for="a-files">${n?"Agregar más PDF":"Elegir los PDF"}</label>
+    <input type="file" id="a-files" accept="application/pdf,.pdf" multiple hidden>
+    ${AN.bad.length?`<div class="msg" role="alert">No pude leer ${AN.bad.length===1?"este archivo":"estos archivos"}: ${AN.bad.map(esc).join(", ")}. Tiene que ser el PDF original que generó Svar, sin imprimir ni volver a guardar. Si es anterior al 23/11/2026, pedile al paciente que lo genere de nuevo.</div>`:""}
+    ${n?`<section class="sec"><h2>${n} PDF ${n===1?"leído":"leídos"} <span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0">${pac} ${pac===1?"paciente":"pacientes"}</span></h2>
+      <table><tbody>${AN.recs.map((x,i)=>`<tr><td>${esc(x.rec.perfil.nombre||"Sin nombre")}<span class="ans none">${x.rec.forms.map(f=>esc(f.code)+" "+rCount(f)+"/"+f.items.length).join(" · ")}</span></td><td style="width:1%"><button class="btn soft" style="min-height:36px;padding:6px 10px" data-a="anrm" data-i="${i}" aria-label="Quitar">Quitar</button></td></tr>`).join("")}</tbody></table></section>
+      <button class="btn pri" data-a="anxlsx" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":"Descargar Excel"}</button>
+      <p class="note">El Excel trae un resumen, una hoja con una fila por respuesta, la referencia de opciones y una hoja por cuestionario con una fila por paciente. Sin puntaje ni interpretación.</p>`:""}
+    ${flash?`<div class="msg" role="status">${flash}</div>`:""}
+    <p class="note">Los PDF se leen en este dispositivo. No se suben a ningún servidor.</p>
   </main>`;
 }
 const PROMPT=`Vas a transcribir un cuestionario de opción múltiple (de los que se completan tildando una respuesta) para mostrarlo en una app.
@@ -401,15 +421,12 @@ function vTablero(){
     ${withAns.length?`<section class="sec"><h2>Enviar</h2><div class="pad stack">
       <p class="note">${P.d?"Destinatario: "+esc(quien())+". ":""}Elegí qué cuestionarios van.</p>
       <div class="opts" role="group" aria-label="Cuestionarios a enviar">${withAns.map(f=>`<button class="opt${isSel(f.id)?" on":""}" role="checkbox" aria-checked="${isSel(f.id)}" data-a="sel" data-f="${esc(f.id)}"><span class="mk"></span><span class="mono" style="font-weight:600;flex:1">${esc(f.code)}</span><span class="mono" style="font-size:12px;color:var(--muted)">${S.done[f.id]?"completo":count(f)+" / "+f.items.length}</span></button>`).join("")}</div>
-      ${ch.length>1?`<div class="two"><button class="btn soft seg${SEP?" on":""}" aria-pressed="${SEP}" data-a="sep" data-v="1">Archivos por test</button><button class="btn soft seg${SEP?"":" on"}" aria-pressed="${!SEP}" data-a="sep" data-v="0">Todo junto</button></div>`:""}
-      <p class="note">Se generan dos archivos: el PDF para leer y un Excel con las mismas respuestas en tabla, para analizar.</p>
-      ${CAN_SHARE_FILES?`<button class="btn pri" data-a="share" ${busy||!ch.length?"disabled":""}>${busy==="share"?"Armando los archivos…":"Enviar PDF y Excel"}</button>`:""}
+      ${ch.length>1?`<div class="two"><button class="btn soft seg${SEP?" on":""}" aria-pressed="${SEP}" data-a="sep" data-v="1">Un PDF por test</button><button class="btn soft seg${SEP?"":" on"}" aria-pressed="${!SEP}" data-a="sep" data-v="0">Todo en un PDF</button></div>`:""}
+      ${CAN_SHARE_FILES?`<button class="btn pri" data-a="share" ${busy||!ch.length?"disabled":""}>${busy==="share"?"Armando el PDF…":"Enviar PDF"}</button>`:""}
       ${P.e&&CAN_SHARE_FILES?`<div class="mailbox"><span class="mono">${esc(P.e)}</span><button class="btn soft" data-a="cpmail">Copiar mail</button></div><p class="note">Al tocar Enviar elegís la app (mail, WhatsApp). Si es por mail, pegá esta dirección como destinatario.</p>`:""}
-      <button class="btn ${CAN_SHARE_FILES?"soft":"pri"}" data-a="pdf" ${busy||!ch.length?"disabled":""}>${busy==="save"?"Armando los archivos…":"Descargar PDF y Excel"}</button>
-      ${P.e&&ch.length?`<a class="btn soft" href="${esc(mailHref(ch))}">Mandar solo un resumen por mail</a>`:""}
-      <button class="btn soft" data-a="copy" ${ch.length?"":"disabled"}>Copiar como texto</button>
+      <button class="btn ${CAN_SHARE_FILES?"soft":"pri"}" data-a="pdf" ${busy||!ch.length?"disabled":""}>${busy==="save"?"Armando el PDF…":"Descargar PDF"}</button>
+      ${!CAN_SHARE_FILES&&P.e?`<p class="note">Después de descargarlo, mandáselo a ${esc(P.e)} o por el medio que acuerden.</p>`:""}
       ${flash?`<div class="msg" role="status">${flash}</div>`:""}
-      ${V.txt?`<textarea id="txt-out" readonly aria-label="Respuestas en texto">${esc(V.txt)}</textarea>`:""}
     </div></section>`:'<div class="msg">Todavía no hay respuestas. Volvé al inicio y abrí un cuestionario.</div>'}
     ${withAns.map(f=>`<details class="sec test"${withAns.length===1?" open":""}><summary><span class="tcode">${esc(f.code)}</span><span class="r mono">${count(f)} / ${f.items.length}</span></summary>
       <h3 class="sub">Resumen: pregunta y letra</h3>
@@ -449,7 +466,7 @@ function vConfig(){
   </main>`;
 }
 function vRoto(){return brand()+`<main><h1 class="big">Este link está incompleto</h1><p style="margin:0">Puede haberse cortado al copiarlo. Pedile a tu profesional que te lo mande de nuevo.</p><button class="btn soft" data-a="topro">Soy profesional: abrir Svar</button></main>`;}
-const VIEWS={pro:vPro,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed,config:vConfig};
+const VIEWS={pro:vPro,analizar:vAnalizar,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed,config:vConfig};
 function render(top){document.getElementById("app").innerHTML=VIEWS[V.name]();if(top)window.scrollTo(0,0);}
 function go(name,extra){
   if(MODE==="pac"&&!datosOk())name="datos";
@@ -492,9 +509,14 @@ const ACT={
   pdf(){exportFiles("save");},
   share(){exportFiles("share");},
   async cpmail(){const ok=await copyText(P.e);flash=ok?"Mail copiado.":"No se pudo copiar. Mantené apretada la dirección para copiarla.";render(false);},
-  async copy(){const t=makeText(chosen()),ok=await copyText(t);
-    flash=ok?"Copiado. Pegalo en WhatsApp, un mail o donde quieras.":"No se pudo copiar solo. Seleccioná el texto de abajo y copialo.";V.txt=ok?"":t;render(false);},
   /* profesional */
+  anrm(el){AN.recs.splice(+el.dataset.i,1);flash="";render(false);},
+  async anxlsx(){if(!AN.recs.length)return;busy="xlsx";flash="";render(false);
+    try{const recs=AN.recs.map(x=>x.rec),names=[...new Set(recs.map(r=>r.perfil.nombre).filter(Boolean))],codes=[...new Set(recs.flatMap(r=>r.forms.map(f=>f.code)))];
+      const name=(codes.join(" ").replace(/[^\w\s-]/g,"").slice(0,60)+" - "+(names.length===1?names[0].replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g,""):names.length+" pacientes")+" - "+today()+".xlsx");
+      const r=await saveFile(name,await makeXlsx(recs));flash=r==="saved"?"Excel listo. Buscalo en tus descargas.":"No se pudo descargar.";}
+    catch(e){flash="No se pudo armar el Excel. Revisá la conexión e intentá de nuevo.";}
+    busy="";render(false);},
   psel(el){PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.confirm=false;flash="";render(false);},
   async mklink(){const fs=picked();if(!fs.length)return;if(!profOk()){go("perfil");return;}const mail=PRO.mail.trim();
     busy="link";flash="";V.link="";render(false);
@@ -521,7 +543,12 @@ const ACT={
   retry(){location.reload();}
 };
 document.addEventListener("click",e=>{const el=e.target.closest("[data-a]");if(!el||el.disabled)return;const fn=ACT[el.dataset.a];if(fn)fn(el);});
-document.addEventListener("change",async e=>{if(e.target.id!=="p-import")return;const file=e.target.files&&e.target.files[0];if(!file)return;
+document.addEventListener("change",async e=>{
+  if(e.target.id==="a-files"){const fl=Array.from(e.target.files||[]);AN.bad=[];flash="";
+    for(const f of fl){const rec=await readPdfRecord(f).catch(()=>null);if(rec&&rec.forms.length){const sig=JSON.stringify(rec);if(!AN.recs.some(x=>x.sig===sig))AN.recs.push({name:f.name,rec,sig});}else AN.bad.push(f.name);}
+    e.target.value="";
+    render(false);return;}
+  if(e.target.id!=="p-import")return;const file=e.target.files&&e.target.files[0];if(!file)return;
   let n=0;try{const o=JSON.parse(await file.text()),arr=Array.isArray(o)?o:(o&&o.forms)||[];const fs=arr.map(x=>normalize([x])).filter(Boolean);n=fs.length;addToLib(fs);save();}catch(err){n=0;}
   flash=n?"Se "+(n===1?"importó 1 formulario.":"importaron "+n+" formularios."):"Ese archivo no es una biblioteca de Svar.";render(false);});
 
@@ -540,79 +567,71 @@ function normalize(parts){
 function addToLib(fs){fs.forEach(f=>{const i=PRO.lib.findIndex(g=>g.code===f.code);if(i>=0){f.id=PRO.lib[i].id;PRO.lib[i]=f;}else PRO.lib.push(f);});}
 
 /* ---------- salida: mail, texto y PDF ---------- */
-function mailHref(fs){const p=S.perfil,L=[(P.d?"Para: "+quien():""),"Nombre: "+(p.nombre||"-"),"Nacimiento: "+(fdate(p.nac)||"-")+"   Sexo: "+(p.sexo||"-"),"Fecha: "+fdate(today()),""];
-  fs.forEach(f=>{L.push(f.code+" ("+count(f)+" de "+f.items.length+")");
-    for(let i=0;i<f.items.length;i+=10)L.push(f.items.slice(i,i+10).map((it,j)=>it.n+(letters(f,i+j)||"_")).join("  "));
-    if(f.scale)L.push(f.scale.map((o,k)=>LT(k)+"="+o).join(", "));L.push("");});
-  L.push("Resumen de pregunta y letra, sin puntaje ni interpretación. Enviado con Svar by fuge1618.");
-  return "mailto:"+encodeURIComponent(P.e)+"?subject="+encodeURIComponent("Respuestas "+fs.map(f=>f.code).join(", ")+(p.nombre?" - "+p.nombre:""))+"&body="+encodeURIComponent(L.join("\r\n"));}
-function makeText(fs){const p=S.perfil,L=["Respuestas de cuestionarios"+(P&&P.d?" para "+quien():""),"Nombre: "+(p.nombre||"-"),"Fecha de nacimiento: "+(fdate(p.nac)||"-"),"Sexo: "+(p.sexo||"-"),"Generado: "+fdate(today()),""];
-  fs.forEach(f=>{L.push("== "+f.code+" ("+count(f)+" de "+f.items.length+(S.done[f.id]?", completado "+fdate(S.done[f.id]):"")+") ==");
-    L.push("Resumen (pregunta-letra):");for(let i=0;i<f.items.length;i+=10)L.push("  "+f.items.slice(i,i+10).map((it,j)=>it.n+"-"+(letters(f,i+j)||"_")).join("  "));
-    if(f.scale)L.push("Letras: "+f.scale.map((o,k)=>LT(k)+" = "+o).join(" | "));else L.push("Letras: posición de la opción elegida en cada pregunta (A = primera).");
-    L.push("Detalle:");f.items.forEach((it,i)=>L.push(it.n+". "+it.t+"\n   > "+(answerText(f,i)||"Sin responder")));L.push("");});
-  return L.join("\n");}
 function loadScript(src){return new Promise((ok,no)=>{if(document.querySelector('script[data-src="'+src+'"]'))return ok();const s=document.createElement("script");s.src=src;s.dataset.src=src;s.onload=()=>ok();s.onerror=()=>{s.remove();no(new Error("script"));};document.head.appendChild(s);});}
 function pdfName(fs){return fs.map(f=>f.code).join(" ").replace(/[^\w\s-]/g,"").slice(0,80)+(S.perfil.nombre?" - "+S.perfil.nombre.replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g,""):"")+" - "+today()+".pdf";}
 const XLSX_MIME="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 async function exportFiles(mode){
   const fs=chosen();if(!fs.length)return;busy=mode;flash="";render(false);
-  try{const groups=SEP?fs.map(f=>[f]):[fs],pdfs=[],xls=[];
-    for(const g of groups){const base=pdfName(g).replace(/\.pdf$/,"");pdfs.push({name:base+".pdf",blob:await makePdf(g),type:"application/pdf"});xls.push({name:base+".xlsx",blob:await makeXlsx(g),type:XLSX_MIME});}
-    const F=a=>a.map(x=>new File([x.blob],x.name,{type:x.type})),title="Respuestas "+fs.map(f=>f.code).join(", ")+(S.perfil.nombre?" - "+S.perfil.nombre:"");
-    const saveAll=async a=>{let ok=0;for(const x of a){if(await saveFile(x.name,x.blob)!=="saved")break;ok++;await new Promise(r=>setTimeout(r,350));}return ok;};
+  try{const groups=SEP?fs.map(f=>[f]):[fs],pdfs=[];
+    for(const g of groups)pdfs.push({name:pdfName(g),blob:await makePdf(g)});
+    const title="Respuestas "+fs.map(f=>f.code).join(", ")+(S.perfil.nombre?" - "+S.perfil.nombre:"");
     if(mode==="share"){
-      const all=pdfs.concat(xls);let files=null,rest=[];
-      try{if(navigator.canShare({files:F(all)}))files=all;else if(navigator.canShare({files:F(pdfs)})){files=pdfs;rest=xls;}}catch(e){}
-      if(!files){const ok=await saveAll(all);flash="Este teléfono no deja compartir estos archivos. Se descargaron "+ok+" de "+all.length+": mandalos desde tus descargas.";}
-      else{try{await navigator.share({files:F(files),title,text:title+(P&&P.d?"\nPara: "+quien():"")});
-          if(rest.length){const ok=await saveAll(rest);flash="Compartiste el PDF. El Excel no se puede compartir directo desde este teléfono: se descargó ("+ok+" de "+rest.length+") para que lo adjuntes vos.";}
-          else flash="Listo, pasaste los archivos a la app que elegiste.";}
-        catch(e){flash=e&&e.name==="AbortError"?"No se envió. Podés intentarlo de nuevo.":"Este teléfono no dejó compartir. Usá Descargar PDF y Excel y mandalos desde tus archivos.";}}
-    }else{const all=pdfs.concat(xls),ok=await saveAll(all);
-      flash=ok===all.length?ok+" archivos listos (PDF y Excel). Buscalos en tus descargas.":"Se descargaron "+ok+" de "+all.length+". Probá de nuevo o usá Copiar como texto.";}
-  }catch(e){flash="No se pudieron armar los archivos. Revisá la conexión e intentá de nuevo.";}
+      try{await navigator.share({files:pdfs.map(x=>new File([x.blob],x.name,{type:"application/pdf"})),title,text:title+(P&&P.d?"\nPara: "+quien():"")});flash="Listo, pasaste el PDF a la app que elegiste.";}
+      catch(e){flash=e&&e.name==="AbortError"?"No se envió. Podés intentarlo de nuevo.":"Este teléfono no dejó compartir. Usá Descargar PDF y mandalo desde tus archivos.";}
+    }else{let ok=0;for(const x of pdfs){if(await saveFile(x.name,x.blob)!=="saved")break;ok++;if(pdfs.length>1)await new Promise(r=>setTimeout(r,350));}
+      flash=ok===pdfs.length?(ok===1?"PDF listo. Buscalo en tus descargas.":ok+" PDF listos, uno por test. Buscalos en tus descargas."):"No se pudo descargar. Probá de nuevo.";}
+  }catch(e){flash="No se pudo armar el PDF. Revisá la conexión e intentá de nuevo.";}
   busy="";render(false);
 }
-/* Excel pensado para analizar: una fila por respuesta, más una hoja por test con las respuestas en una sola fila. */
-async function makeXlsx(fs){
+/* Registro: los datos del PDF en formato de máquina. Va escondido dentro del PDF (marca svar1:) y es lo que lee "Analizar resultados". */
+function recordFrom(fs){return{v:1,p:S.perfil,d:(P&&P.d)||"",m:(P&&P.m)||"",e:(P&&P.e)||"",t:today(),
+  f:fs.map(f=>Object.assign(toWire(f),{r:f.items.map((_,i)=>has(f,i)?R(f,i):null),k:S.done[f.id]||0}))};}
+function recordRead(o){if(!o||o.v!==1||!Array.isArray(o.f))return null;const p=o.p||{};
+  return{perfil:{nombre:String(p.nombre||""),nac:String(p.nac||""),sexo:String(p.sexo||"")},d:String(o.d||""),m:String(o.m||""),e:String(o.e||""),fecha:String(o.t||""),
+    forms:o.f.map((w,i)=>{const f=fromWire(w,i);f.resp=Array.isArray(w.r)?w.r:[];f.done=w.k?String(w.k):"";return f;}).filter(f=>f.items.length)};}
+async function readPdfRecord(file){const u=new Uint8Array(await file.arrayBuffer());let t="";for(let i=0;i<u.length;i+=0x8000)t+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));
+  const m=t.match(/svar1:([zj][A-Za-z0-9_-]+)/);if(!m)return null;try{return recordRead(await unpack(m[1]));}catch(e){return null;}}
+const rHas=(f,i)=>{const r=f.resp[i];return f.items[i].multi?Array.isArray(r)&&r.length>0:Number.isInteger(r);};
+const rSort=r=>r.slice().sort((a,b)=>a-b);
+const rLet=(f,i)=>{const r=f.resp[i];return !rHas(f,i)?null:Array.isArray(r)?rSort(r).map(LT).join(","):LT(r);};
+const rNum=(f,i)=>{const r=f.resp[i];return !rHas(f,i)?null:Array.isArray(r)?rSort(r).map(k=>k+1).join(","):r+1;};
+const rTxt=(f,i)=>{const os=opts(f,f.items[i]),r=f.resp[i];return !rHas(f,i)?null:Array.isArray(r)?rSort(r).map(k=>os[k]).join(" | "):os[r];};
+const rCount=f=>f.items.reduce((a,_,i)=>a+(rHas(f,i)?1:0),0);
+/* Excel para analizar: Resumen, Respuestas (una fila por respuesta), Opciones y una hoja por test con una fila por paciente. */
+async function makeXlsx(recs){
   await loadScript(XLSX_URL);const wb=new window.ExcelJS.Workbook();wb.creator="Svar by fuge1618";wb.created=new Date();
-  const p=S.perfil,D=s=>{if(!s)return null;const a=String(s).split("-").map(Number);return a.length===3&&a.every(Number.isFinite)?new Date(Date.UTC(a[0],a[1]-1,a[2])):null;};
-  const num=v=>/^\d+$/.test(String(v))?Number(v):String(v),DF="dd/mm/yyyy",INK="FF1A1A19",ACC="FFFF8000",SOFT="FFF1F0EC";
-  const head=(ws,row)=>{const r=ws.getRow(row||1);r.font={bold:true,color:{argb:"FFFFFFFF"}};r.height=22;r.alignment={vertical:"middle"};r.eachCell(c=>{c.fill={type:"pattern",pattern:"solid",fgColor:{argb:INK}};});};
-  const table=(ws)=>{head(ws,1);ws.views=[{state:"frozen",ySplit:1}];ws.autoFilter={from:{row:1,column:1},to:{row:1,column:ws.columnCount}};};
-  const pos=(f,i)=>{const r=R(f,i);if(!has(f,i))return null;return Array.isArray(r)?r.slice().sort((a,b)=>a-b).map(k=>k+1).join(","):r+1;};
-  const txt=(f,i)=>{const os=opts(f,f.items[i]),r=R(f,i);if(!has(f,i))return null;return Array.isArray(r)?r.slice().sort((a,b)=>a-b).map(k=>os[k]).join(" | "):os[r];};
-  /* Datos */
-  const d=wb.addWorksheet("Datos");d.columns=[{width:26},{width:46},{width:14},{width:14},{width:16}];
-  d.addRow(["Respuestas de cuestionarios"]).font={bold:true,size:14};d.addRow(["Sin puntaje ni interpretación. Generado con Svar by fuge1618."]).font={color:{argb:"FF63615C"}};d.addRow([]);
-  [["Paciente",p.nombre||""],["Fecha de nacimiento",D(p.nac)],["Sexo",p.sexo||""],["Profesional",(P&&P.d)||""],["Matrícula",(P&&P.m)||""],["Mail del profesional",(P&&P.e)||""],["Fecha del informe",D(today())]]
-    .forEach(x=>{const r=d.addRow(x);r.getCell(1).font={bold:true};r.getCell(2).alignment={horizontal:"left"};if(x[1] instanceof Date)r.getCell(2).numFmt=DF;});
-  d.addRow([]);const hr=d.addRow(["Cuestionario","Preguntas","Respondidas","Completo","Fecha"]);head(d,hr.number);
-  fs.forEach(f=>{const r=d.addRow([f.code,f.items.length,count(f),S.done[f.id]?"SI":"NO",D(S.done[f.id])]);r.getCell(5).numFmt=DF;});
-  /* Respuestas: formato largo */
+  const D=s=>{if(!s)return null;const a=String(s).split("-").map(Number);return a.length===3&&a.every(Number.isFinite)?new Date(Date.UTC(a[0],a[1]-1,a[2])):null;};
+  const num=v=>/^\d+$/.test(String(v))?Number(v):String(v),DF="dd/mm/yyyy",INK="FF1A1A19",W={wrapText:true,vertical:"top"};
+  const table=(ws,xs)=>{const r=ws.getRow(1);r.font={bold:true,color:{argb:"FFFFFFFF"}};r.height=22;r.alignment={vertical:"middle"};r.eachCell(c=>{c.fill={type:"pattern",pattern:"solid",fgColor:{argb:INK}};});
+    ws.views=[{state:"frozen",ySplit:1,xSplit:xs||0}];ws.autoFilter={from:{row:1,column:1},to:{row:1,column:ws.columnCount}};};
+  const z=wb.addWorksheet("Resumen");
+  z.columns=[{header:"paciente",key:"pa",width:28},{header:"fecha_nacimiento",key:"fn",width:17,style:{numFmt:DF}},{header:"sexo",key:"sx",width:8},{header:"cuestionario",key:"cu",width:14},{header:"preguntas",key:"n",width:11},{header:"respondidas",key:"r",width:13},{header:"completo",key:"c",width:10},{header:"fecha_completado",key:"fc",width:17,style:{numFmt:DF}},{header:"fecha_informe",key:"fi",width:15,style:{numFmt:DF}}];
   const a=wb.addWorksheet("Respuestas");
   a.columns=[{header:"paciente",key:"pa",width:26},{header:"fecha_nacimiento",key:"fn",width:17,style:{numFmt:DF}},{header:"sexo",key:"sx",width:8},{header:"cuestionario",key:"cu",width:14},{header:"fecha_completado",key:"fc",width:17,style:{numFmt:DF}},
-    {header:"n_pregunta",key:"n",width:12},{header:"pregunta",key:"q",width:70,style:{alignment:{wrapText:true,vertical:"top"}}},{header:"respuesta_letra",key:"l",width:16},{header:"respuesta_numero",key:"k",width:17},{header:"respuesta_texto",key:"t",width:38,style:{alignment:{wrapText:true,vertical:"top"}}}];
-  fs.forEach(f=>f.items.forEach((it,i)=>a.addRow({pa:p.nombre||"",fn:D(p.nac),sx:p.sexo||"",cu:f.code,fc:D(S.done[f.id]),n:num(it.n),q:it.t,l:letters(f,i)||null,k:pos(f,i),t:txt(f,i)})));
-  table(a);
-  /* Opciones: qué significa cada letra y número */
+    {header:"n_pregunta",key:"n",width:12},{header:"pregunta",key:"q",width:70,style:{alignment:W}},{header:"respuesta_letra",key:"l",width:16},{header:"respuesta_numero",key:"k",width:17},{header:"respuesta_texto",key:"t",width:38,style:{alignment:W}}];
   const o=wb.addWorksheet("Opciones");
-  o.columns=[{header:"cuestionario",key:"cu",width:14},{header:"n_pregunta",key:"n",width:12},{header:"letra",key:"l",width:8},{header:"numero",key:"k",width:9},{header:"texto",key:"t",width:60,style:{alignment:{wrapText:true,vertical:"top"}}}];
-  fs.forEach(f=>{if(f.scale)f.scale.forEach((x,k)=>o.addRow({cu:f.code,n:"todas",l:LT(k),k:k+1,t:x}));
-    f.items.forEach(it=>{if(it.o)it.o.forEach((x,k)=>o.addRow({cu:f.code,n:num(it.n),l:LT(k),k:k+1,t:x}));});});
-  table(o);
-  /* Una hoja por test, con todas las respuestas en una fila */
-  const used={Datos:1,Respuestas:1,Opciones:1};
-  fs.forEach(f=>{let name=(String(f.code).replace(/[\\\/\?\*\[\]:]/g," ").trim().slice(0,24)||"Test")+" fila";let base=name,c=2;while(used[name]){name=base.slice(0,26)+" "+c++;}used[name]=1;
-    const w=wb.addWorksheet(name);w.columns=[{width:18}].concat(f.items.map(()=>({width:6})));
-    w.addRow(["pregunta"].concat(f.items.map(it=>num(it.n))));w.addRow(["respuesta_numero"].concat(f.items.map((_,i)=>pos(f,i))));w.addRow(["respuesta_letra"].concat(f.items.map((_,i)=>letters(f,i)||null)));
-    head(w,1);w.getColumn(1).font={bold:true};w.getRow(1).getCell(1).font={bold:true,color:{argb:"FFFFFFFF"}};w.views=[{state:"frozen",xSplit:1,ySplit:1}];
-    [2,3].forEach(n=>w.getRow(n).eachCell((c,ci)=>{if(ci>1)c.alignment={horizontal:"center"};}));});
+  o.columns=[{header:"cuestionario",key:"cu",width:14},{header:"n_pregunta",key:"n",width:12},{header:"letra",key:"l",width:8},{header:"numero",key:"k",width:9},{header:"texto",key:"t",width:60,style:{alignment:W}}];
+  const tests=[],seen={};
+  recs.forEach(rec=>{const p=rec.perfil,base={pa:p.nombre,fn:D(p.nac),sx:p.sexo};
+    rec.forms.forEach(f=>{const c=rCount(f);
+      z.addRow(Object.assign({},base,{cu:f.code,n:f.items.length,r:c,c:c===f.items.length?"SI":"NO",fc:D(f.done),fi:D(rec.fecha)}));
+      f.items.forEach((it,i)=>a.addRow(Object.assign({},base,{cu:f.code,fc:D(f.done),n:num(it.n),q:it.t,l:rLet(f,i),k:rNum(f,i),t:rTxt(f,i)})));
+      const sig=f.code+"|"+f.items.map(it=>it.n).join(",");
+      if(!seen[sig]){seen[sig]={code:f.code,items:f.items,rows:[]};tests.push(seen[sig]);
+        if(f.scale)f.scale.forEach((x,k)=>o.addRow({cu:f.code,n:"todas",l:LT(k),k:k+1,t:x}));
+        f.items.forEach(it=>{if(it.o)it.o.forEach((x,k)=>o.addRow({cu:f.code,n:num(it.n),l:LT(k),k:k+1,t:x}));});}
+      seen[sig].rows.push([p.nombre,D(p.nac),p.sexo,D(f.done)].concat(f.items.map((_,i)=>rNum(f,i))));});});
+  table(z);table(a);table(o);
+  const used={Resumen:1,Respuestas:1,Opciones:1};
+  tests.forEach(t=>{let name=String(t.code).replace(/[\\\/\?\*\[\]:]/g," ").trim().slice(0,28)||"Test",base=name,c=2;while(used[name]){name=base.slice(0,26)+" "+c++;}used[name]=1;
+    const w=wb.addWorksheet(name);
+    w.columns=[{header:"paciente",width:26},{header:"fecha_nacimiento",width:17,style:{numFmt:DF}},{header:"sexo",width:8},{header:"fecha_completado",width:17,style:{numFmt:DF}}].concat(t.items.map(it=>({header:"p"+it.n,width:6,style:{alignment:{horizontal:"center"}}})));
+    t.rows.forEach(r=>w.addRow(r));table(w,1);});
   return new Blob([await wb.xlsx.writeBuffer()],{type:XLSX_MIME});
 }
 async function makePdf(fs){
   await loadScript(JSPDF_URL);const d=new window.jspdf.jsPDF({unit:"pt",format:"a4"});
+  d.setProperties({title:"Respuestas "+fs.map(f=>f.code).join(", "),author:"Svar by fuge1618",keywords:"svar1:"+await pack(recordFrom(fs))});
   const W=595.28,H=841.89,M=44,wN=30,wA=170,wT=W-2*M-wN-wA-16;let y=M,cur="";const pageCode={};
   const lat=s=>String(s==null?"":s).replace(/[“”«»]/g,'"').replace(/[‘’]/g,"'").replace(/[–—]/g,"-").replace(/…/g,"...").replace(/​/g,"").replace(/[^\x00-\xFF]/g,"?");
   const need=h=>{if(y+h>H-M-22){d.addPage();y=M;pageCode[d.getNumberOfPages()]=cur;}};
