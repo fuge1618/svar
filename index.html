@@ -173,6 +173,14 @@ input[type=email]{width:100%;padding:12px;border:1px solid var(--line);border-ra
 .librow .opt{flex:1;min-width:0}
 .keybtn{flex:none;min-height:54px;padding:8px 12px;font-size:13px;font-family:var(--mono)}
 .keybtn.has{border-color:var(--ok);color:var(--ok)}
+.opt.pac{align-items:center;text-align:left}
+table.pts td,table.pts th{padding:8px 14px}
+table.pts tr.tot td{font-weight:600}
+table.pts td.inc{color:var(--accent)}
+details.resp{border-top:1px solid var(--line);margin-top:12px}
+details.resp>summary{padding:12px 14px;cursor:pointer;font-size:14px;color:var(--muted)}
+div.cell{cursor:default}
+.sec>h2 .tcode{font-size:18px;letter-spacing:0;text-transform:none;font-weight:600;color:var(--ink)}
 </style>
 </head>
 <body>
@@ -275,9 +283,9 @@ function vPro(){
       <input type="file" id="p-import" accept="application/json,.json" hidden>
       ${lib.length?`<div class="two"><button class="btn soft" data-a="exportlib">Exportar biblioteca</button>${V.confirm?`<button class="btn" data-a="rm2">Sí, quitar ${n}</button>`:`<button class="btn danger" data-a="rm" ${n?"":"disabled"}>Quitar marcados</button>`}</div>`:""}
     </div></section>
-    <section class="sec"><h2>Resultados</h2><div class="pad stack">
-      <p class="note">Cuando recibas los PDF de tus pacientes, cargalos acá para obtener el Excel.</p>
-      <button class="btn" data-a="go" data-v="analizar">Analizar resultados</button></div></section>
+    <section class="sec"><h2>Pacientes <span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0">${pacientes().length||""}</span></h2><div class="pad stack">
+      <p class="note">Cuando recibas los PDF de tus pacientes, cargalos acá. Vas a ver la ficha de cada uno, con respuestas y puntajes, y descargar su Excel.</p>
+      <button class="btn" data-a="go" data-v="pacientes">Ver pacientes y cargar resultados</button></div></section>
     <section class="sec"><h2>Link para el paciente</h2><div class="pad stack">
       <dl class="datos"><dt>Profesional</dt><dd>${esc(PRO.nombre)}</dd><dt>Mail</dt><dd>${esc(PRO.mail)}</dd>${PRO.mat?`<dt>Matrícula</dt><dd>${esc(PRO.mat)}</dd>`:""}</dl>
       <p class="note">El paciente va a ver estos datos como remitente, y las respuestas van a este mail.</p>
@@ -324,9 +332,9 @@ function vForm(){
     <section class="sec"><h2>Clave de puntuación</h2><div class="pad stack">
       ${k?`<div><div style="font-weight:600">${esc(keySummary(k,f))}</div>${k.subs.length?`<div class="note" style="margin-top:4px">${k.subs.map(u=>esc(u.name)+" ("+u.n.length+")").join(" · ")}</div>`:""}
         ${k.src?`<p class="note" style="margin-top:8px">Fuente: ${esc(k.src)}</p>`:""}${k.ref?`<p class="note">Referencia: ${esc(k.ref)}</p>`:""}</div>
-        <p class="note">Con la clave cargada, el Excel de "Analizar resultados" suma una hoja de puntajes. Revisala contra tu material antes de usarla.</p>
+        <p class="note">Con la clave cargada, la ficha del paciente muestra los puntajes y el Excel suma una hoja con ellos. Revisala contra tu material antes de usarla.</p>
         ${V.confirm?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="keyrm2">Sí, quitar la clave</button></div>`:`<button class="btn danger" data-a="keyrm">Quitar la clave</button>`}`
-      :`<div class="msg">Este cuestionario no tiene clave. El Excel va a traer las respuestas sin puntaje.</div>`}
+      :`<div class="msg">Este cuestionario no tiene clave. La ficha y el Excel van a traer las respuestas sin puntaje.</div>`}
     </div></section>
     <section class="sec"><h2>${k?"Cambiar la clave":"Cargar la clave"}</h2><div class="pad stack">
       <p class="note">1. Copiá las indicaciones. 2. Pegalas en tu IA (Claude, ChatGPT, Gemini) junto con la clave de corrección que tengas de este cuestionario. 3. Pegá acá la respuesta.</p>
@@ -339,26 +347,65 @@ function vForm(){
     </div></section>
   </main>`;
 }
-let AN={recs:[],bad:[],junto:false};
+/* Pacientes: los resultados cargados quedan solo en este dispositivo (localStorage), como el registro comprimido que venía en cada PDF. */
+let DB=[],BAD=[];
 const pacKey=r=>(r.perfil.nombre||"").trim().toLowerCase().replace(/\s+/g," ")+"|"+(r.perfil.nac||"");
-function pacGroups(){const m=new Map();AN.recs.forEach((x,i)=>{const k=pacKey(x.rec);if(!m.has(k))m.set(k,{nombre:x.rec.perfil.nombre||"Sin nombre",nac:x.rec.perfil.nac,items:[]});m.get(k).items.push({x,i});});return[...m.values()];}
-function vAnalizar(){
-  const n=AN.recs.length,gs=pacGroups(),pac=gs.length;
-  return `<header class="bar"><button class="ghost" data-a="home">‹ Volver</button><div class="t">Analizar resultados</div><div class="cnt"></div></header>
+function dbSave(){try{localStorage.setItem("svar.db",JSON.stringify({v:1,recs:DB.map(x=>({p:x.p,n:x.n,a:x.a}))}));return true;}catch(e){return false;}}
+async function dbRead(arr){const out=[];for(const x of (Array.isArray(arr)?arr:[])){if(!x||typeof x.p!=="string"||!/^[zj][A-Za-z0-9_-]+$/.test(x.p))continue;
+  try{const rec=recordRead(await unpack(x.p));if(rec&&rec.forms.length)out.push({p:x.p,n:String(x.n||"").slice(0,120),a:String(x.a||""),rec});}catch(e){}}return out;}
+function dbAdd(xs){let n=0;const back=DB.slice();xs.forEach(x=>{if(!DB.some(y=>y.p===x.p)){DB.push(x);n++;}});if(n&&!dbSave()){DB=back;return -1;}return n;}
+function pacientes(){const m=new Map();DB.forEach(x=>{const k=pacKey(x.rec);if(!m.has(k))m.set(k,{k,nombre:x.rec.perfil.nombre||"Sin nombre",nac:x.rec.perfil.nac,sexo:x.rec.perfil.sexo,recs:[]});m.get(k).recs.push(x.rec);});
+  return[...m.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre,"es"));}
+/* Un mismo cuestionario puede llegar en dos PDF (suelto y dentro de otro): si las respuestas son idénticas cuenta una sola vez. */
+function sinRepetir(recs){const seen={};return recs.map(r=>Object.assign({},r,{forms:r.forms.filter(f=>{const k=pacKey(r)+"|"+f.code+"|"+JSON.stringify(f.resp);if(seen[k])return false;seen[k]=1;return true;})})).filter(r=>r.forms.length);}
+function pacTests(g){const out=[];sinRepetir(g.recs).forEach(r=>r.forms.forEach(f=>out.push({f,fecha:f.done||r.fecha,rec:r})));
+  return out.sort((a,b)=>a.f.code.localeCompare(b.f.code,"es")||String(a.fecha).localeCompare(String(b.fecha)));}
+const DBNOTE='<p class="note">Los resultados quedan guardados solo en este dispositivo: no van a ningún servidor. Son datos de salud de tus pacientes; cuidá quién tiene acceso a este dispositivo y a los respaldos.</p>';
+function vPacientes(){
+  const gs=pacientes();
+  return `<header class="bar"><button class="ghost" data-a="home">‹ Volver</button><div class="t">Pacientes</div><div class="cnt mono">${gs.length||""}</div></header>
   <main>
-    <p style="margin:0">Cargá todos los PDF que te mandaron, de una vez o en tandas. Svar los agrupa por paciente y arma un solo Excel con todos sus cuestionarios.</p>
-    <label class="btn pri filebtn" for="a-files">${n?"Agregar más PDF":"Elegir los PDF"}</label>
+    <p style="margin:0">Cargá los PDF que te mandaron, de una vez o en tandas. Svar los guarda agrupados por paciente.</p>
+    <label class="btn pri filebtn" for="a-files">Cargar PDF</label>
     <input type="file" id="a-files" accept="application/pdf,.pdf" multiple hidden>
-    ${AN.bad.length?`<div class="msg" role="alert">No pude leer ${AN.bad.length===1?"este archivo":"estos archivos"}: ${AN.bad.map(esc).join(", ")}. Tiene que ser el PDF original que generó Svar, sin imprimir ni volver a guardar. Si es anterior al 23/11/2026, pedile al paciente que lo genere de nuevo.</div>`:""}
-    ${gs.map(g=>{const codes=g.items.flatMap(o=>o.x.rec.forms.map(f=>f.code));
-      return `<section class="sec"><h2>${esc(g.nombre)} <span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none">${g.nac?esc(fdate(g.nac))+" · ":""}${codes.length} ${codes.length===1?"cuestionario":"cuestionarios"}</span></h2>
-      <table><tbody>${g.items.map(o=>`<tr><td>${o.x.rec.forms.map(f=>`<span class="mono" style="font-weight:600">${esc(f.code)}</span> <span style="color:var(--muted)">${rCount(f)}/${f.items.length}${keyFor(f)?" · con puntaje":""}</span>`).join(" · ")}<span class="ans none">${esc(o.x.name)}</span></td><td style="width:1%"><button class="btn soft" style="min-height:36px;padding:6px 10px" data-a="anrm" data-i="${o.i}">Quitar</button></td></tr>`).join("")}</tbody></table></section>`;}).join("")}
-    ${n?`${pac>1?`<div class="two"><button class="btn soft seg${AN.junto?"":" on"}" aria-pressed="${!AN.junto}" data-a="anmodo" data-v="0">Un Excel por paciente</button><button class="btn soft seg${AN.junto?" on":""}" aria-pressed="${AN.junto}" data-a="anmodo" data-v="1">Todos en un Excel</button></div>`:""}
-      <button class="btn pri" data-a="anxlsx" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":pac>1&&!AN.junto?"Descargar "+pac+" Excel, uno por paciente":"Descargar Excel"}</button>
-      <button class="btn soft" data-a="anclear">Empezar de nuevo</button>
-      <p class="note">Cada Excel trae un resumen, una hoja con una fila por respuesta, la referencia de opciones y una hoja por cuestionario. Los cuestionarios que tengan clave en tu biblioteca suman una hoja de puntajes, sin interpretación.</p>`:""}
+    ${BAD.length?`<div class="msg" role="alert">No pude leer ${BAD.length===1?"este archivo":"estos archivos"}: ${BAD.map(esc).join(", ")}. Tiene que ser el PDF original que generó Svar, sin imprimir ni volver a guardar. Si es anterior al 23/11/2026, pedile al paciente que lo genere de nuevo.</div>`:""}
     ${flash?`<div class="msg" role="status">${flash}</div>`:""}
-    <p class="note">Los PDF se leen en este dispositivo y no quedan guardados: al salir de esta pantalla o cerrar la app hay que cargarlos de nuevo.</p>
+    ${gs.length?`<div class="opts">${gs.map(g=>{const ts=pacTests(g),codes=[...new Set(ts.map(t=>t.f.code))];
+      return `<button class="opt pac" data-a="pacopen" data-k="${esc(g.k)}"><span style="flex:1;min-width:0"><span style="font-weight:600;display:block">${esc(g.nombre)}</span><span class="mono" style="font-size:12px;color:var(--muted);display:block;margin-top:2px">${codes.map(esc).join(" · ")}</span></span><span class="mono" style="font-size:12px;color:var(--muted)">${g.nac?esc(fdate(g.nac)):""} ›</span></button>`;}).join("")}</div>
+    ${gs.length>1?`<button class="btn soft" data-a="pacxlsx" data-k="" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":"Descargar un Excel con todos"}</button>`:""}`
+    :'<div class="msg">Todavía no hay pacientes cargados.</div>'}
+    <section class="sec"><h2>Respaldo</h2><div class="pad stack">
+      <p class="note">El respaldo es un archivo con tus pacientes y tu biblioteca. Sirve como copia de seguridad y para pasar todo a otro dispositivo: lo exportás acá y lo importás allá.</p>
+      <div class="two"><button class="btn soft" data-a="dbexport" ${gs.length?"":"disabled"}>Exportar respaldo</button><label class="btn soft filebtn" for="d-import">Importar respaldo</label></div>
+      <input type="file" id="d-import" accept="application/json,.json" hidden>
+      ${gs.length?(V.confirm?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="dbwipe2">Sí, borrar todos</button></div>`:`<button class="btn danger" data-a="dbwipe">Borrar todos los pacientes</button>`):""}
+    </div></section>
+    ${DBNOTE}
+  </main>`;
+}
+function vPaciente(){
+  const g=pacientes().find(x=>x.k===V.pk);if(!g)return vPacientes();const ts=pacTests(g);let hayClave=false;
+  const body=ts.map((t,ti)=>{const f=t.f,key=keyFor(f),sc=key?scoreForm(f,key):null,n=rCount(f);if(sc)hayClave=true;
+    return `<section class="sec"><h2><span class="tcode">${esc(f.code)}</span><span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none">${t.fecha?esc(fdate(t.fecha))+" · ":""}${n} / ${f.items.length}</span></h2>
+      ${sc?`<table class="pts"><thead><tr><th>Escala</th><th>Puntaje</th><th>Rango</th><th>Resp.</th></tr></thead><tbody>${sc.scales.map((e,j)=>`<tr${j?"":' class="tot"'}><td>${esc(e.name)}</td><td class="mono"><b>${e.sum}</b></td><td class="mono">${e.min}–${e.max}</td><td class="mono${e.ans<e.n?" inc":""}">${e.ans}/${e.n}</td></tr>`).join("")}</tbody></table>
+        ${sc.scales[0].ans<sc.scales[0].n?'<p class="note pad" style="padding-bottom:0">Hay preguntas sin responder: el puntaje suma solo las respondidas.</p>':""}
+        ${key.ref?`<p class="note pad" style="padding-bottom:0">Referencia publicada: ${esc(key.ref)}</p>`:""}`
+      :`<p class="note pad" style="padding-bottom:0">Sin clave de puntuación en tu biblioteca para este cuestionario.</p>`}
+      <details class="resp"><summary>Ver respuestas</summary>
+        <div class="grid">${f.items.map((it,i)=>{const l=rLet(f,i);return `<div class="cell${l?"":" none"}"><span>${esc(it.n)}</span><b>${l||"–"}</b></div>`;}).join("")}</div>
+        ${f.scale?`<div class="legend">${f.scale.map((o,k)=>`<div><b class="mono">${LT(k)}</b> ${esc(o)}</div>`).join("")}</div>`:""}
+        <table><tbody>${f.items.map((it,i)=>{const a=rTxt(f,i),p=sc?sc.pts[i]:null;
+          return `<tr><td class="n">${esc(it.n)}</td><td>${esc(it.t)}<span class="ans${a?"":" none"}">${a?esc(a):"Sin responder"}</span></td>${sc?`<td class="n" style="text-align:right">${p==null?"":p}</td>`:""}</tr>`;}).join("")}</tbody></table>
+      </details></section>`;}).join("");
+  return `<header class="bar"><button class="ghost" data-a="go" data-v="pacientes">‹ Pacientes</button><div class="t">${esc(g.nombre)}</div><div class="cnt"></div></header>
+  <main>
+    <section class="sec"><h2>Datos</h2><div class="pad">
+      <dl class="datos"><dt>Nombre</dt><dd>${esc(g.nombre)}</dd><dt>Nacimiento</dt><dd>${esc(fdate(g.nac))||"—"}</dd><dt>Sexo</dt><dd>${esc(g.sexo)||"—"}</dd><dt>Cuestionarios</dt><dd>${ts.length}</dd></dl></div></section>
+    ${body}
+    ${hayClave?'<p class="note">Los puntajes salen de las claves de tu biblioteca y son orientativos, sin interpretación. La lectura clínica es tuya.</p>':""}
+    <button class="btn pri" data-a="pacxlsx" data-k="${esc(g.k)}" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":"Descargar Excel"}</button>
+    ${flash?`<div class="msg" role="status">${flash}</div>`:""}
+    ${V.confirm?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="pacrm2">Sí, quitar</button></div>`:`<button class="btn danger" data-a="pacrm">Quitar este paciente</button>`}
   </main>`;
 }
 const PROMPT=`Vas a transcribir un cuestionario de opción múltiple (de los que se completan tildando una respuesta) para mostrarlo en una app.
@@ -512,7 +559,7 @@ function vConfig(){
   </main>`;
 }
 function vRoto(){return brand()+`<main><h1 class="big">Este link está incompleto</h1><p style="margin:0">Puede haberse cortado al copiarlo. Pedile a tu profesional que te lo mande de nuevo.</p><button class="btn soft" data-a="topro">Soy profesional: abrir Svar</button></main>`;}
-const VIEWS={pro:vPro,form:vForm,analizar:vAnalizar,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed,config:vConfig};
+const VIEWS={pro:vPro,form:vForm,pacientes:vPacientes,paciente:vPaciente,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed,config:vConfig};
 function render(top){document.getElementById("app").innerHTML=VIEWS[V.name]();if(top)window.scrollTo(0,0);}
 function goForm(id){go("form",{fid:id});}
 function go(name,extra){
@@ -557,7 +604,6 @@ const ACT={
   share(){exportFiles("share");},
   async cpmail(){const ok=await copyText(P.e);flash=ok?"Mail copiado.":"No se pudo copiar. Mantené apretada la dirección para copiarla.";render(false);},
   /* profesional */
-  anrm(el){AN.recs.splice(+el.dataset.i,1);flash="";render(false);},
   async cpkeyprompt(){const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return;const ok=await copyText(keyPrompt(f));V.showp=!ok;flash=ok?"Indicaciones copiadas. Pegalas en tu IA junto con la clave.":"No se pudo copiar solo. Copiá el texto que aparece arriba.";render(false);},
   keyparse(){const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return;const t=document.getElementById("k-json").value,o=looseJson(t);
     if(!o){flash=t.trim()?"No pude leer eso. Pegá la respuesta completa de la IA, desde la primera llave { hasta la última }.":"Pegá primero la respuesta de tu IA.";render(false);return;}
@@ -565,14 +611,17 @@ const ACT={
     f.key=c.key;save();V.confirm=false;flash="Clave guardada: "+esc(keySummary(c.key,f))+".";render(true);},
   keyrm(){V.confirm=true;render(false);},
   keyrm2(){const f=PRO.lib.find(x=>x.id===V.fid);if(f){delete f.key;save();}V.confirm=false;flash="Clave quitada.";render(false);},
-  anmodo(el){AN.junto=el.dataset.v==="1";render(false);},
-  anclear(){AN={recs:[],bad:[],junto:false};flash="";render(false);},
-  async anxlsx(){if(!AN.recs.length)return;busy="xlsx";flash="";render(false);
-    try{const clean=t=>String(t||"").replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g,"").trim(),codesOf=rs=>[...new Set(rs.flatMap(r=>r.forms.map(f=>f.code)))].join(" ").replace(/[^\w\s-]/g,"").slice(0,60);
-      const gs=pacGroups(),jobs=gs.length>1&&!AN.junto?gs.map(g=>({recs:g.items.map(o=>o.x.rec),name:(clean(g.nombre)||"Paciente")+" - "+codesOf(g.items.map(o=>o.x.rec))+" - "+today()+".xlsx"}))
-        :[{recs:AN.recs.map(x=>x.rec),name:(gs.length===1?(clean(gs[0].nombre)||"Paciente"):gs.length+" pacientes")+" - "+codesOf(AN.recs.map(x=>x.rec))+" - "+today()+".xlsx"}];
-      let ok=0;for(const j of jobs){if(await saveFile(j.name,await makeXlsx(j.recs))!=="saved")break;ok++;if(jobs.length>1)await new Promise(r=>setTimeout(r,400));}
-      flash=ok===jobs.length?(ok===1?"Excel listo. Buscalo en tus descargas.":ok+" Excel listos, uno por paciente. Buscalos en tus descargas."):"Se descargaron "+ok+" de "+jobs.length+". Probá de nuevo.";}
+  pacopen(el){go("paciente",{pk:el.dataset.k});},
+  pacrm(){V.confirm=true;render(false);},
+  pacrm2(){const back=DB.slice();DB=DB.filter(x=>pacKey(x.rec)!==V.pk);if(!dbSave()){DB=back;flash="No se pudo guardar el cambio.";V.confirm=false;render(false);return;}go("pacientes");flash="Paciente quitado de este dispositivo.";render(false);},
+  dbwipe(){V.confirm=true;render(false);},
+  dbwipe2(){DB=[];BAD=[];try{localStorage.removeItem("svar.db");}catch(e){}V.confirm=false;flash="Se borraron todos los pacientes de este dispositivo.";render(false);},
+  async dbexport(){const r=await saveFile("respaldo-svar-"+today()+".json",new Blob([JSON.stringify({svar:1,tipo:"respaldo",fecha:today(),forms:PRO.lib,pacientes:DB.map(x=>({p:x.p,n:x.n,a:x.a}))})],{type:"application/json"}));
+    flash=r==="saved"?"Respaldo descargado. Contiene datos de tus pacientes: guardalo en un lugar seguro.":"No se pudo descargar.";render(false);},
+  async pacxlsx(el){const k=el.dataset.k,gs=pacientes(),g=k?gs.find(x=>x.k===k):null,recs=sinRepetir(g?g.recs:DB.map(x=>x.rec));if(!recs.length)return;busy="xlsx";flash="";render(false);
+    try{const clean=t=>String(t||"").replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g,"").trim(),codes=[...new Set(recs.flatMap(r=>r.forms.map(f=>f.code)))].join(" ").replace(/[^\w\s-]/g,"").slice(0,60);
+      const r=await saveFile((g?(clean(g.nombre)||"Paciente"):gs.length+" pacientes")+" - "+codes+" - "+today()+".xlsx",await makeXlsx(recs));
+      flash=r==="saved"?"Excel listo. Buscalo en tus descargas.":"No se pudo descargar.";}
     catch(e){flash="No se pudo armar el Excel. Revisá la conexión e intentá de nuevo.";}
     busy="";render(false);},
   psel(el){PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.confirm=false;flash="";render(false);},
@@ -601,14 +650,20 @@ const ACT={
   retry(){location.reload();}
 };
 document.addEventListener("click",e=>{const el=e.target.closest("[data-a]");if(!el||el.disabled)return;const fn=ACT[el.dataset.a];if(fn)fn(el);});
+async function importFile(file){let nf=0,np=0,full=false;
+  try{const o=JSON.parse(await file.text()),arr=Array.isArray(o)?o:(o&&o.forms)||[];const fs=arr.map(x=>normalize([x])).filter(Boolean);nf=fs.length;if(nf){addToLib(fs);save();}
+    if(o&&Array.isArray(o.pacientes)){const xs=await dbRead(o.pacientes),r=dbAdd(xs);if(r<0)full=true;else np=xs.length;}}catch(err){}
+  if(full)return"No queda espacio en este navegador para guardar esos pacientes.";
+  if(!nf&&!np)return"Ese archivo no es una biblioteca ni un respaldo de Svar.";
+  return"Se importó: "+[nf&&(nf===1?"1 formulario":nf+" formularios"),np&&(np===1?"1 resultado de pacientes":np+" resultados de pacientes")].filter(Boolean).join(" y ")+".";}
 document.addEventListener("change",async e=>{
-  if(e.target.id==="a-files"){const fl=Array.from(e.target.files||[]);AN.bad=[];flash="";
-    for(const f of fl){const rec=await readPdfRecord(f).catch(()=>null);if(rec&&rec.forms.length){const sig=JSON.stringify(rec);if(!AN.recs.some(x=>x.sig===sig))AN.recs.push({name:f.name,rec,sig});}else AN.bad.push(f.name);}
-    e.target.value="";
+  if(e.target.id==="a-files"){const fl=Array.from(e.target.files||[]),xs=[];BAD=[];flash="";
+    for(const f of fl){const x=await readPdfRecord(f).catch(()=>null);if(x&&x.rec.forms.length)xs.push({p:x.p,n:f.name.slice(0,120),a:today(),rec:x.rec});else BAD.push(f.name);}
+    e.target.value="";const n=dbAdd(xs);
+    flash=n<0?"No queda espacio en este navegador para guardar más resultados. Exportá un respaldo y quitá pacientes que ya no necesites.":xs.length?(n?(n===1?"Se guardó 1 PDF.":"Se guardaron "+n+" PDF.")+(n<xs.length?" Los demás ya estaban cargados.":""):"Esos PDF ya estaban cargados."):"";
     render(false);return;}
-  if(e.target.id!=="p-import")return;const file=e.target.files&&e.target.files[0];if(!file)return;
-  let n=0;try{const o=JSON.parse(await file.text()),arr=Array.isArray(o)?o:(o&&o.forms)||[];const fs=arr.map(x=>normalize([x])).filter(Boolean);n=fs.length;addToLib(fs);save();}catch(err){n=0;}
-  flash=n?"Se "+(n===1?"importó 1 formulario.":"importaron "+n+" formularios."):"Ese archivo no es una biblioteca de Svar.";render(false);});
+  if(e.target.id!=="p-import"&&e.target.id!=="d-import")return;const file=e.target.files&&e.target.files[0];if(!file)return;
+  flash=await importFile(file);e.target.value="";render(false);});
 
 /* ---------- biblioteca ---------- */
 function looseJson(t){t=String(t||"").trim();const fence=t.match(/```(?:json)?\s*([\s\S]*?)```/);if(fence)t=fence[1].trim();
@@ -642,14 +697,14 @@ async function exportFiles(mode){
   }catch(e){flash="No se pudo armar el PDF. Revisá la conexión e intentá de nuevo.";}
   busy="";render(false);
 }
-/* Registro: los datos del PDF en formato de máquina. Va escondido dentro del PDF (marca svar1:) y es lo que lee "Analizar resultados". */
+/* Registro: los datos del PDF en formato de máquina. Va escondido dentro del PDF (marca svar1:) y es lo que lee la pantalla Pacientes. */
 function recordFrom(fs){return{v:1,p:S.perfil,d:(P&&P.d)||"",m:(P&&P.m)||"",e:(P&&P.e)||"",t:today(),
   f:fs.map(f=>Object.assign(toWire(f),{r:f.items.map((_,i)=>has(f,i)?R(f,i):null),k:S.done[f.id]||0}))};}
 function recordRead(o){if(!o||o.v!==1||!Array.isArray(o.f))return null;const p=o.p||{};
   return{perfil:{nombre:String(p.nombre||""),nac:String(p.nac||""),sexo:String(p.sexo||"")},d:String(o.d||""),m:String(o.m||""),e:String(o.e||""),fecha:String(o.t||""),
     forms:o.f.map((w,i)=>{const f=fromWire(w,i);f.resp=Array.isArray(w.r)?w.r:[];f.done=w.k?String(w.k):"";return f;}).filter(f=>f.items.length)};}
 async function readPdfRecord(file){const u=new Uint8Array(await file.arrayBuffer());let t="";for(let i=0;i<u.length;i+=0x8000)t+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));
-  const m=t.match(/svar1:([zj][A-Za-z0-9_-]+)/);if(!m)return null;try{return recordRead(await unpack(m[1]));}catch(e){return null;}}
+  const m=t.match(/svar1:([zj][A-Za-z0-9_-]+)/);if(!m)return null;try{const rec=recordRead(await unpack(m[1]));return rec?{p:m[1],rec}:null;}catch(e){return null;}}
 /* Claves de puntuación: viven en la biblioteca del profesional, nunca viajan al paciente ni van dentro del PDF. */
 function keyCheck(k,f){
   if(!k||typeof k!=="object"||!Array.isArray(k.rules)||!k.rules.length)return{err:"No encontré reglas de puntuación en ese texto."};
@@ -780,7 +835,7 @@ async function saveFile(filename,blob){
   if(packed){try{const o=await unpack(packed);P={e:String(o.e||""),d:String(o.d||""),m:String(o.m||""),p:String(o.p||""),forms:(o.f||[]).map(fromWire).filter(f=>f.items.length)};if(!P.forms.length)throw 0;
       MODE="pac";KEY="svar.p."+sid;const s=ls.get(KEY);if(s&&typeof s==="object")S=Object.assign(S,s);}catch(e){roto=true;}}
   if(MODE==="pac"&&!PAL&&P.p){PAL=P.p;applyTheme();}
-  if(MODE==="pro"){const p=ls.get("svar.pro");if(p&&typeof p==="object")PRO=Object.assign(PRO,p);}
+  if(MODE==="pro"){const p=ls.get("svar.pro");if(p&&typeof p==="object")PRO=Object.assign(PRO,p);const d=ls.get("svar.db");if(d&&Array.isArray(d.recs))DB=await dbRead(d.recs);}
   V={name:MODE==="pac"?(datosOk()?"inicio":"datos"):sinred?"sinred":roto?"roto":profOk()?"pro":"perfil"};render(false);
   setTimeout(()=>{const s=document.getElementById("splash");if(s)s.remove();},1700);
 })();
