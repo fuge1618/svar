@@ -291,6 +291,8 @@ details.sec>summary::after{content:"▾";color:var(--muted);margin-left:8px}
 details.sec[open]>summary::after{content:"▴"}
 details.sec .inner{padding:0 10px 10px;display:flex;flex-direction:column;gap:12px}
 @media(min-width:900px){.shell .page{max-width:760px}.shell .page.wide{max-width:1180px}}
+.chip.gc{border-left-color:var(--muted);background:none;border:1px dashed var(--line);border-left:3px solid var(--muted)}
+.mc .ml.gc{border-left-color:var(--muted);color:var(--muted)}
 </style>
 </head>
 <body>
@@ -581,11 +583,42 @@ function vHerr(){
       ${hay?(V.confirm==="db"?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="dbwipe2">Sí, borrar todo</button></div>`:`<button class="btn danger" data-a="confirm" data-v="db">Borrar pacientes y resultados</button>`):""}</div></section>
     <section class="sec"><h2>Datos de ejemplo</h2><div class="pad stack"><p class="note">Cinco pacientes inventados, con sesiones, notas, tareas y tests, para probar o mostrar la app.</p>
       ${DB.pacs.some(p=>p.demo)?'<button class="btn soft" data-a="demorm">Quitar los datos de ejemplo</button>':'<button class="btn soft" data-a="demo">Cargar pacientes de ejemplo</button>'}</div></section>
-    <section class="sec"><h2>Google Calendar</h2><div class="pad"><p class="note">Las sesiones se cargan en la agenda de Svar. La conexión con Google Calendar todavía no está disponible.</p></div></section>
+    <section class="sec"><h2>Google Calendar</h2><div class="pad stack">
+      ${!GCAL_ID?'<p class="note">La conexión con Google Calendar todavía no está habilitada en esta versión.</p>'
+      :GC.cfg.on?`<p class="note">${gcOk()?"Conectado.":"Activado, pero el permiso venció: dura una hora por seguridad."} La agenda muestra los eventos de tu calendario principal.</p>
+        <button class="opt${GC.cfg.write?" on":""}" role="checkbox" aria-checked="${!!GC.cfg.write}" data-a="gcwrite"><span class="mk"></span><span style="flex:1">Crear en Google cada sesión que cargue en Svar</span></button>
+        <p class="note">El evento se llama "Sesión · nombre del paciente" y queda en tu cuenta de Google.</p>
+        <div class="two"><button class="btn" data-a="${gcOk()?"gcsync":"gcon"}" ${busy?"disabled":""}>${busy==="gc"?"Conectando…":gcOk()?"Sincronizar ahora":"Reconectar"}</button><button class="btn soft" data-a="gcoff">Desconectar</button></div>`
+      :`<p class="note">Mostrá en la agenda los eventos de tu Google Calendar y, si querés, que cada sesión se cree también allá. Google te va a pedir permiso con tu cuenta. Svar no guarda tu contraseña y nada pasa por el servidor de fuge1618.</p>
+        <button class="btn pri" data-a="gcon" ${busy?"disabled":""}>${busy==="gc"?"Conectando…":"Conectar Google Calendar"}</button>`}</div></section>
     ${installBox()}
     <p class="note">Pacientes, sesiones y resultados quedan solo en este dispositivo. Al servidor de fuge1618 van únicamente los formularios en blanco que mandás, con tu nombre y mail, y los archivos que subís para que la app interprete un formulario nuevo.</p>
   </main>`;
 }
+/* Google Calendar: opcional. El permiso lo da el profesional con su cuenta; el acceso dura una hora y vive solo en esta pestaña.
+   Svar lee sus eventos para mostrarlos en la agenda y, si él quiere, crea un evento por cada sesión. Nada pasa por el servidor de fuge1618. */
+const GCAL_ID="",GCAL_SCOPE="https://www.googleapis.com/auth/calendar.events",GAPI="https://www.googleapis.com/calendar/v3/calendars/primary/events";
+let GC={tok:"",exp:0,ev:[],key:"",cfg:{on:false,write:true},err:""};
+try{const t=JSON.parse(sessionStorage.getItem("svar.gtok")||"null");if(t&&t.exp>Date.now()+60000){GC.tok=t.tok;GC.exp=t.exp;}}catch(e){}
+const gcOk=()=>!!GC.tok&&GC.exp>Date.now()+30000;
+const gcOf=f=>gcOk()?GC.ev.filter(e=>e.f===f):[];
+async function gcCall(method,url,body){const r=await fetch(url,{method,headers:Object.assign({Authorization:"Bearer "+GC.tok},body?{"Content-Type":"application/json"}:{}),body:body?JSON.stringify(body):undefined});
+  if(r.status===401){GC.tok="";try{sessionStorage.removeItem("svar.gtok");}catch(e){}}if(!r.ok&&r.status!==410&&r.status!==404)throw new Error("gcal "+r.status);return r.status===204||!r.ok?null:r.json();}
+async function gcConnect(consent){await loadScript("https://accounts.google.com/gsi/client");
+  return new Promise(ok=>{const c=google.accounts.oauth2.initTokenClient({client_id:GCAL_ID,scope:GCAL_SCOPE,callback:r=>{if(r&&r.access_token){GC.tok=r.access_token;GC.exp=Date.now()+(+r.expires_in||3600)*1000;try{sessionStorage.setItem("svar.gtok",JSON.stringify({tok:GC.tok,exp:GC.exp}));}catch(e){}ok(true);}else ok(false);},error_callback:()=>ok(false)});
+    c.requestAccessToken({prompt:consent?"consent":""});});}
+async function gcFetch(a,b){const tz=x=>new Date(x+"T00:00:00").toISOString();
+  const j=await gcCall("GET",GAPI+"?singleEvents=true&orderBy=startTime&maxResults=500&timeMin="+encodeURIComponent(tz(a))+"&timeMax="+encodeURIComponent(tz(dAdd(b,1))));
+  GC.ev=((j&&j.items)||[]).filter(e=>e.status!=="cancelled"&&!(e.extendedProperties&&e.extendedProperties.private&&e.extendedProperties.private.svar)).map(e=>{const st=e.start||{},en=e.end||{};
+    return{f:(st.dateTime||st.date||"").slice(0,10),h:st.dateTime?st.dateTime.slice(11,16):"",hf:en.dateTime?en.dateTime.slice(11,16):"",t:e.summary||"(sin título)"};});}
+function gcEnsure(a,b){if(!gcOk())return;const k=a+"|"+b;if(GC.key===k)return;GC.key=k;gcFetch(a,b).then(()=>{if(V.name==="agenda")render(false);}).catch(()=>{GC.key="";});}
+const gcBody=s=>{const p=pac(s.pid),z=Intl.DateTimeFormat().resolvedOptions().timeZone,b={summary:"Sesión · "+(p?p.nombre:""),description:s.nota||"",extendedProperties:{private:{svar:s.id}}};
+  if(s.h){b.start={dateTime:s.f+"T"+s.h+":00",timeZone:z};const e=hfin(s),nf=e<s.h?dAdd(s.f,1):s.f;b.end={dateTime:nf+"T"+e+":00",timeZone:z};}else{b.start={date:s.f};b.end={date:dAdd(s.f,1)};}return b;};
+/* Sube a Google una sesión (crea o actualiza). Si falla, la sesión queda igual en Svar y se reintenta con "Sincronizar". */
+async function gcPush(s){if(!gcOk()||!GC.cfg.write)return false;try{const j=s.gid?await gcCall("PATCH",GAPI+"/"+encodeURIComponent(s.gid),gcBody(s)):null;if(j)return true;const n=await gcCall("POST",GAPI,gcBody(s));if(n&&n.id){s.gid=n.id;return true;}}catch(e){}return false;}
+async function gcDrop(s){if(!s.gid||!gcOk())return;try{await gcCall("DELETE",GAPI+"/"+encodeURIComponent(s.gid));}catch(e){}}
+async function gcSync(){let n=0;for(const s of DB.ses.filter(x=>x.f>=today()&&!x.gid&&pac(x.pid))){if(await gcPush(s))n++;}if(n)dbSave();return n;}
+const gchip=e=>`<div class="chip gc"><span class="mono">${esc(e.h||"todo el día")}${e.hf?"–"+esc(e.hf):""}</span><b>${esc(e.t)}</b><small>Google Calendar</small></div>`;
 /* Agenda: semana o mes. En pantallas anchas la semana se ve en siete columnas; en el teléfono, tira de días y lista del día elegido. */
 let CAL={d:"",mode:"sem"},NAVOPEN=false;
 const dISO=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
@@ -598,16 +631,19 @@ const chip=s=>`<button class="chip" data-a="go" data-v="sesion" data-s="${esc(s.
 function vAgenda(){
   const d=CAL.d||(CAL.d=today()),t=today(),sem=CAL.mode==="sem",ym=d.slice(0,7),start=monday(sem?d:ym+"-01"),days=Array.from({length:sem?7:42},(_,i)=>dAdd(start,i));
   const title=sem?(+days[0].slice(8))+" – "+(+days[6].slice(8))+" "+MES[+days[6].slice(5,7)-1].slice(0,3)+" "+days[6].slice(0,4):MES[+d.slice(5,7)-1]+" "+d.slice(0,4),sel=sesOf(d);
+  gcEnsure(days[0],days[days.length-1]);const gsel=gcOf(d);
   return bar("Agenda")+`<main>
+    ${GCAL_ID&&GC.cfg.on&&!gcOk()?'<div class="msg">Google Calendar está desconectado por seguridad (el permiso dura una hora). <button class="btn soft mini" data-a="gcon" style="margin-top:8px">Reconectar</button></div>':""}
     <div class="caltb"><button class="btn soft mini" data-a="calnav" data-v="-1" aria-label="Anterior">‹</button><button class="btn soft mini" data-a="calhoy">Hoy</button><button class="btn soft mini" data-a="calnav" data-v="1" aria-label="Siguiente">›</button>
       <span class="calt">${title}</span>
       <button class="btn soft mini seg${sem?" on":""}" data-a="calmode" data-v="sem">Semana</button><button class="btn soft mini seg${sem?"":" on"}" data-a="calmode" data-v="mes">Mes</button>
       <button class="btn pri mini" data-a="go" data-v="sesion" data-d="${d}">+ Sesión</button></div>
     ${sem?`<div class="wstrip">${days.map((x,i)=>{const n=sesOf(x).length;return `<button class="wd${x===d?" on":""}${x===t?" hoy":""}" data-a="calday" data-d="${x}"><span>${DOW[i]}</span><b>${+x.slice(8)}</b><i>${n||""}</i></button>`;}).join("")}</div>
-      <div class="wcols">${days.map((x,i)=>`<div class="wcol${x===t?" hoy":""}"><div class="wch"><span>${DOW[i]}</span><b>${+x.slice(8)}</b></div>${sesOf(x).map(chip).join("")}<button class="addc" data-a="go" data-v="sesion" data-d="${x}" aria-label="Agregar sesión el ${DOW[i]} ${+x.slice(8)}">+</button></div>`).join("")}</div>`
-    :`<div class="mgrid">${DOW.map(x=>`<div class="mh">${x}</div>`).join("")}${days.map(x=>{const ss=sesOf(x);return `<button class="mc${x.slice(0,7)===ym?"":" out"}${x===d?" on":""}${x===t?" hoy":""}" data-a="calday" data-d="${x}"><b>${+x.slice(8)}</b>${ss.slice(0,3).map(s=>`<span class="ml">${esc(s.h||"")} ${esc(pac(s.pid).nombre.split(" ")[0])}</span>`).join("")}${ss.length>3?`<span class="ml">+${ss.length-3}</span>`:""}${ss.length?`<i>${ss.length}</i>`:""}</button>`;}).join("")}</div>`}
+      <div class="wcols">${days.map((x,i)=>`<div class="wcol${x===t?" hoy":""}"><div class="wch"><span>${DOW[i]}</span><b>${+x.slice(8)}</b></div>${sesOf(x).map(chip).join("")}${gcOf(x).map(gchip).join("")}<button class="addc" data-a="go" data-v="sesion" data-d="${x}" aria-label="Agregar sesión el ${DOW[i]} ${+x.slice(8)}">+</button></div>`).join("")}</div>`
+    :`<div class="mgrid">${DOW.map(x=>`<div class="mh">${x}</div>`).join("")}${days.map(x=>{const ss=sesOf(x);return `<button class="mc${x.slice(0,7)===ym?"":" out"}${x===d?" on":""}${x===t?" hoy":""}" data-a="calday" data-d="${x}"><b>${+x.slice(8)}</b>${ss.slice(0,3).map(s=>`<span class="ml">${esc(s.h||"")} ${esc(pac(s.pid).nombre.split(" ")[0])}</span>`).join("")}${ss.length>3?`<span class="ml">+${ss.length-3}</span>`:""}${ss.length<3?gcOf(x).slice(0,3-ss.length).map(e=>`<span class="ml gc">${esc(e.h)} ${esc(cut(e.t,14))}</span>`).join(""):""}${ss.length?`<i>${ss.length}</i>`:""}</button>`;}).join("")}</div>`}
     <section class="sec dlist${sem?" semd":""}"><h2>${esc(dlabel(d))} ${rtag(sel.length?sel.length+(sel.length===1?" sesión":" sesiones"):"")}</h2>
       ${sel.length?sel.map(s=>sesRow(s,false,true)).join(""):'<p class="note pad" style="padding-bottom:0">Sin sesiones este día.</p>'}
+      ${gsel.map(e=>`<div class="lrow"><span class="mono h">${esc(e.h||"día")}</span><span class="g" style="font-weight:500">${esc(e.t)}<small>Google Calendar</small></span></div>`).join("")}
       <div class="pad"><button class="btn soft" style="width:100%" data-a="go" data-v="sesion" data-d="${d}">Agregar sesión este día</button></div></section>
   </main>`;
 }
@@ -933,6 +969,12 @@ const ACT={
     save();flash=dbSave()?"Se cargaron 5 pacientes de ejemplo, con sesiones, notas, tareas y tests. Son inventados; los quitás desde Ajustes.":"No se pudieron guardar los datos de ejemplo.";go("panel");flash="Se cargaron 5 pacientes de ejemplo. Son inventados; los quitás desde Ajustes.";render(false);},
   demorm(){const ids=DB.pacs.filter(p=>p.demo).map(p=>p.id),has=x=>ids.includes(x.pid);DB.pacs=DB.pacs.filter(p=>!p.demo);DB.ses=DB.ses.filter(x=>!has(x));DB.env=DB.env.filter(x=>!has(x));DB.res=DB.res.filter(x=>!has(x));DB.tar=DB.tar.filter(x=>!x.demo);
     PRO.lib=PRO.lib.filter(f=>f.id!=="demo");save();dbSave();flash="Se quitaron los datos de ejemplo.";render(false);},
+  async gcon(){busy="gc";render(false);let ok=false;try{ok=await gcConnect(!GC.cfg.on);}catch(e){}busy="";
+    if(ok){GC.cfg.on=true;ls.set("svar.gcal",GC.cfg);GC.key="";const n=GC.cfg.write?await gcSync():0;flash="Google Calendar conectado."+(n?" Se crearon "+n+(n===1?" sesión":" sesiones")+" en tu calendario.":"");}
+    else flash="No se pudo conectar con Google Calendar. Si cerraste la ventana de Google, probá de nuevo.";render(false);},
+  gcoff(){try{if(GC.tok&&window.google)google.accounts.oauth2.revoke(GC.tok,()=>{});sessionStorage.removeItem("svar.gtok");}catch(e){}GC.tok="";GC.ev=[];GC.key="";GC.cfg.on=false;ls.set("svar.gcal",GC.cfg);flash="Google Calendar desconectado. Los eventos ya creados en Google quedan allá.";render(false);},
+  gcwrite(){GC.cfg.write=!GC.cfg.write;ls.set("svar.gcal",GC.cfg);render(false);},
+  async gcsync(){busy="gc";render(false);const n=await gcSync();GC.key="";busy="";flash=n?"Se crearon "+n+(n===1?" sesión":" sesiones")+" en Google Calendar.":"Todo al día: no había sesiones futuras sin sincronizar.";render(false);},
   nav(){NAVOPEN=!NAVOPEN;document.getElementById("app").classList.toggle("open",NAVOPEN);},
   calnav(el){const k=+el.dataset.v;if(CAL.mode==="sem")CAL.d=dAdd(CAL.d,7*k);else{const d=new Date(CAL.d.slice(0,7)+"-01T12:00:00");d.setMonth(d.getMonth()+k);CAL.d=dISO(d);}render(false);},
   calhoy(){CAL.d=today();render(false);},
@@ -946,9 +988,9 @@ const ACT={
   pacrm2(){const id=V.pk;DB.pacs=DB.pacs.filter(p=>p.id!==id);DB.ses=DB.ses.filter(s=>s.pid!==id);DB.env=DB.env.filter(e=>e.pid!==id);DB.res=DB.res.filter(x=>x.pid!==id);DB.tar=DB.tar.filter(x=>x.pid!==id);dbSave();go("pacientes");flash="Ficha borrada de este dispositivo.";render(false);},
   sessave(){const pid=document.getElementById("s-pac").value,f=document.getElementById("s-f").value,h=document.getElementById("s-h").value,nota=document.getElementById("s-n").value.trim();
     if(!f){flash="Falta la fecha.";render(false);return;}
-    let s=V.sid&&DB.ses.find(x=>x.id===V.sid);const dur=+document.getElementById("s-d").value||50,txt=document.getElementById("s-t").value.trim();if(s)Object.assign(s,{pid,f,h,nota,dur,txt});else DB.ses.push({id:"s"+uid(),pid,f,h,nota,dur,txt});
-    dbSave();if(V.pk)go("paciente",{pk:V.pk});else{CAL.d=f;go("agenda");}},
-  sesrm(){DB.ses=DB.ses.filter(x=>x.id!==V.sid);dbSave();if(V.pk)go("paciente",{pk:V.pk});else go("agenda");},
+    let s=V.sid&&DB.ses.find(x=>x.id===V.sid);const dur=+document.getElementById("s-d").value||50,txt=document.getElementById("s-t").value.trim();if(s)Object.assign(s,{pid,f,h,nota,dur,txt});else{s={id:"s"+uid(),pid,f,h,nota,dur,txt};DB.ses.push(s);}
+    dbSave();if(f>=today())gcPush(s).then(ok=>{if(ok)dbSave();});if(V.pk)go("paciente",{pk:V.pk});else{CAL.d=f;go("agenda");}},
+  sesrm(){const old=DB.ses.find(x=>x.id===V.sid);if(old)gcDrop(old);DB.ses=DB.ses.filter(x=>x.id!==V.sid);dbSave();if(V.pk)go("paciente",{pk:V.pk});else go("agenda");},
   psel(el){V.topen=V.eopen=true;const fs=document.getElementById("fs-pac");if(fs)V.fpk=fs.value;PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.linkmsg="";flash="";render(false);},
   async paclink(){const inForms=V.name==="forms",p=pac(inForms?(document.getElementById("fs-pac")||{}).value:V.pk),fs=picked();if(!p||!fs.length)return;if(inForms)V.fpk=p.id;V.lpk=p.id;V.topen=V.eopen=true;busy="link";V.link="";V.linkmsg="";render(false);
     const packed=await pack({e:PRO.mail.trim(),d:PRO.nombre.trim(),m:(PRO.mat||"").trim(),p:PAL||"",f:fs.map(toWire)});let id="",why="";
@@ -1211,7 +1253,7 @@ async function saveFile(filename,blob){
       const s=ls.get(KEY);if(s&&typeof s==="object")S=Object.assign(S,s);
       if(P.fix)S.perfil={nombre:String(who.n||""),nac:String(who.b||""),sexo:String(who.s||"")};}catch(e){roto=true;}}
   if(MODE==="pac"&&!PAL&&P.p){PAL=P.p;applyTheme();}
-  if(MODE==="pro"){const p=ls.get("svar.pro");if(p&&typeof p==="object")PRO=Object.assign(PRO,p);const d=ls.get("svar.db");if(d&&typeof d==="object"){["pacs","ses","env","tar"].forEach(k=>{if(Array.isArray(d[k]))DB[k]=d[k];});const xs=await dbRead(d.res||d.recs||[]);let mig=!!d.recs;xs.forEach(x=>{if(!pac(x.pid)){attach(x);mig=true;}DB.res.push(x);});if(mig)dbSave();}}
+  if(MODE==="pro"){const p=ls.get("svar.pro");if(p&&typeof p==="object")PRO=Object.assign(PRO,p);const gc=ls.get("svar.gcal");if(gc&&typeof gc==="object")GC.cfg=Object.assign(GC.cfg,gc);const d=ls.get("svar.db");if(d&&typeof d==="object"){["pacs","ses","env","tar"].forEach(k=>{if(Array.isArray(d[k]))DB[k]=d[k];});const xs=await dbRead(d.res||d.recs||[]);let mig=!!d.recs;xs.forEach(x=>{if(!pac(x.pid)){attach(x);mig=true;}DB.res.push(x);});if(mig)dbSave();}}
   V={name:MODE==="pac"?(datosOk()?"inicio":"datos"):sinred?"sinred":roto?"roto":profOk()?"panel":"perfil"};render(false);
   setTimeout(()=>{const s=document.getElementById("splash");if(s)s.remove();},1700);
 })();
