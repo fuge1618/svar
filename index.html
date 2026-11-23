@@ -181,6 +181,28 @@ details.resp{border-top:1px solid var(--line);margin-top:12px}
 details.resp>summary{padding:12px 14px;cursor:pointer;font-size:14px;color:var(--muted)}
 div.cell{cursor:default}
 .sec>h2 .tcode{font-size:18px;letter-spacing:0;text-transform:none;font-weight:600;color:var(--ink)}
+input[type=email],input[type=tel],input[type=time],input[type=search],select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-height:48px;color:var(--ink);font:inherit}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:12px 10px;text-align:left;color:var(--ink);display:flex;flex-direction:column;gap:6px;font:inherit}
+button.stat{cursor:pointer}
+.stat b{font-family:var(--mono);font-size:26px;line-height:1}
+.stat span{font-size:12px;color:var(--muted);line-height:1.25}
+.lrow{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.sec>.lrow:last-child{border-bottom:0}
+div.lrow{cursor:default}
+.lrow[hidden]{display:none}
+.lrow .g{flex:1;min-width:0;font-weight:600;overflow-wrap:anywhere}
+.lrow .g small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
+.lrow .h{font-size:13px;color:var(--muted);min-width:44px;font-weight:400}
+.lrow .ch{color:var(--muted)}
+.btn.mini{min-height:36px;padding:6px 10px;font-size:13px;flex:none;width:auto}
+textarea.ta{min-height:64px;font-family:inherit;font-size:15px}
+.edi{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.edr{display:flex;gap:8px;align-items:flex-start}
+.edr .edn{width:58px;flex:none;text-align:center;font-family:var(--mono);padding:12px 4px}
+.edr input,.edr textarea{min-width:0;flex:1}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);margin:0}
+.chk input{width:20px;height:20px}
 </style>
 </head>
 <body>
@@ -238,7 +260,7 @@ function applyTheme(){const r=document.documentElement;if(TEMA==="auto")r.remove
   const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=(isDark()?p[2]:p[1])[0];}
 const MAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const profOk=()=>!!(PRO.nombre||"").trim()&&MAIL_RE.test((PRO.mail||"").trim());
-const datosOk=()=>{const p=S.perfil||{};return !!((p.nombre||"").trim()&&p.nac&&(p.sexo||"").trim());};
+const datosOk=()=>{if(P&&P.fix)return true;const p=S.perfil||{};return !!((p.nombre||"").trim()&&p.nac&&(p.sexo||"").trim());};
 const quien=()=>P?P.d+(P.m?" · Matrícula "+P.m:""):"";
 const sender=()=>P&&P.d?`<section class="sec"><h2>Enviado por</h2><div class="pad"><div style="font-weight:600;font-size:17px">${esc(P.d)}</div>${P.m?`<div class="mono" style="font-size:13px;color:var(--muted)">Matrícula ${esc(P.m)}</div>`:""}<p class="note" style="margin-top:8px">Estos cuestionarios te los envió este profesional y tus respuestas son para él${P.e?": "+esc(P.e):""}.</p></div></section>`:"";
 const isSel=id=>SEL[id]!==false;
@@ -271,34 +293,265 @@ const brand=sub=>`<div class="brand">${MARK}<div><div class="name">Svar</div><di
 const noStore=()=>storageOk?"":'<div class="msg">Este navegador no deja guardar datos. Si cerrás la página se pierde lo cargado.</div>';
 
 /* ---------- modo profesional ---------- */
-function vPro(){
-  const lib=PRO.lib,n=picked().length,L=V.link||"";
-  return brand()+`<main>
-    <p class="lema">Modo profesional. Elegí los cuestionarios, creá un link y mandáselo a tu paciente.</p>
-    ${noStore()}
-    <section class="sec"><h2>Biblioteca <span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0">${lib.length} ${lib.length===1?"formulario":"formularios"}</span></h2><div class="pad stack">
-      ${lib.length?`<p class="note">Tildá los que querés enviar. "Clave" abre la clave de puntuación de cada cuestionario.</p><div class="opts" role="group" aria-label="Cuestionarios para enviar">${lib.map(f=>`<div class="librow"><button class="opt${PSEL[f.id]?" on":""}" role="checkbox" aria-checked="${!!PSEL[f.id]}" data-a="psel" data-f="${esc(f.id)}"><span class="mk"></span><span class="mono" style="font-weight:600;flex:1">${esc(f.code)}</span><span class="mono" style="font-size:12px;color:var(--muted)">${f.items.length} preg.</span></button><button class="btn soft keybtn${f.key?" has":""}" data-a="go" data-v="form" data-f="${esc(f.id)}" aria-label="Clave de puntuación de ${esc(f.code)}">${f.key?"Clave ✓":"Clave"}</button></div>`).join("")}</div>`
-        :'<div class="msg">Todavía no hay formularios. Agregá uno o importá una biblioteca.</div>'}
-      <div class="two"><button class="btn soft" data-a="go" data-v="agregar">Agregar formulario</button><label class="btn soft filebtn" for="p-import">Importar biblioteca</label></div>
-      <input type="file" id="p-import" accept="application/json,.json" hidden>
-      ${lib.length?`<div class="two"><button class="btn soft" data-a="exportlib">Exportar biblioteca</button>${V.confirm?`<button class="btn" data-a="rm2">Sí, quitar ${n}</button>`:`<button class="btn danger" data-a="rm" ${n?"":"disabled"}>Quitar marcados</button>`}</div>`:""}
-    </div></section>
-    <section class="sec"><h2>Pacientes <span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0">${pacientes().length||""}</span></h2><div class="pad stack">
-      <p class="note">Cuando recibas los PDF de tus pacientes, cargalos acá. Vas a ver la ficha de cada uno, con respuestas y puntajes, y descargar su Excel.</p>
-      <button class="btn" data-a="go" data-v="pacientes">Ver pacientes y cargar resultados</button></div></section>
-    <section class="sec"><h2>Link para el paciente</h2><div class="pad stack">
-      <dl class="datos"><dt>Profesional</dt><dd>${esc(PRO.nombre)}</dd><dt>Mail</dt><dd>${esc(PRO.mail)}</dd>${PRO.mat?`<dt>Matrícula</dt><dd>${esc(PRO.mat)}</dd>`:""}</dl>
-      <p class="note">El paciente va a ver estos datos como remitente, y las respuestas van a este mail.</p>
-      <button class="btn soft" data-a="go" data-v="perfil">Editar mi perfil</button>
-      <button class="btn pri" data-a="mklink" ${n&&!busy?"":"disabled"}>${busy==="link"?"Creando el link…":n?"Crear link con "+n+(n===1?" cuestionario":" cuestionarios"):"Marcá al menos un cuestionario"}</button>
-      ${flash?`<div class="msg" role="status">${flash}</div>`:""}
-      ${L?(V.short?`<input type="text" id="p-link" readonly aria-label="Link para el paciente" class="mono" value="${esc(L)}">`
-        :`<textarea id="p-link" readonly aria-label="Link para el paciente" style="min-height:96px;word-break:break-all">${esc(L)}</textarea>`)+`
-        <div class="two"><button class="btn" data-a="cplink">Copiar link</button>${CAN_SHARE?'<button class="btn" data-a="shlink">Compartir</button>':'<button class="btn soft" data-a="openlink">Probar acá</button>'}</div>
-        ${CAN_SHARE?'<button class="btn soft" data-a="openlink">Probar en este dispositivo</button>':""}`:""}
-    </div></section>
+/* Todo lo del profesional (pacientes, sesiones, envíos y resultados) vive solo en este dispositivo, en localStorage. */
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const normName=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ");
+let DB={pacs:[],ses:[],env:[],res:[]},BAD=[],ED=null,AG={files:[],text:""};
+function dbSave(){try{localStorage.setItem("svar.db",JSON.stringify({v:2,pacs:DB.pacs,ses:DB.ses,env:DB.env,res:DB.res.map(x=>({p:x.p,n:x.n,a:x.a,pid:x.pid}))}));return true;}catch(e){return false;}}
+async function dbRead(arr){const out=[];for(const x of (Array.isArray(arr)?arr:[])){if(!x||typeof x.p!=="string"||!/^[zj][A-Za-z0-9_-]+$/.test(x.p))continue;
+  try{const rec=recordRead(await unpack(x.p));if(rec&&rec.forms.length)out.push({p:x.p,n:String(x.n||"").slice(0,120),a:String(x.a||""),pid:String(x.pid||""),rec});}catch(e){}}return out;}
+const pac=id=>DB.pacs.find(p=>p.id===id);
+/* Un resultado se asigna a la ficha desde la que salió el link; si no trae ficha, por nombre y nacimiento; si no hay, se crea. */
+function attach(x){const r=x.rec;let p=pac(x.pid)||pac(r.pid);
+  if(!p){const k=normName(r.perfil.nombre);p=DB.pacs.find(q=>normName(q.nombre)===k&&(!q.nac||!r.perfil.nac||q.nac===r.perfil.nac));}
+  if(!p){p={id:"p"+uid(),nombre:r.perfil.nombre||"Sin nombre",nac:r.perfil.nac||"",sexo:r.perfil.sexo||"",tel:"",mail:"",nota:"",activo:true,alta:today()};DB.pacs.push(p);}
+  x.pid=p.id;return p;}
+function dbAdd(xs){const back={pacs:DB.pacs.slice(),res:DB.res.slice()},who=[];xs.forEach(x=>{if(DB.res.some(y=>y.p===x.p))return;who.push(attach(x));DB.res.push(x);});
+  if(who.length&&!dbSave()){DB.pacs=back.pacs;DB.res=back.res;return null;}return who;}
+const byName=(a,b)=>a.nombre.localeCompare(b.nombre,"es");
+const activos=()=>DB.pacs.filter(p=>p.activo!==false).sort(byName);
+const pacRecs=id=>DB.res.filter(x=>x.pid===id).map(x=>x.rec);
+/* Un mismo cuestionario puede llegar en dos PDF: si las respuestas son idénticas cuenta una sola vez. */
+function sinRepetir(recs){const seen={};return recs.map(r=>Object.assign({},r,{forms:r.forms.filter(f=>{const k=f.code+"|"+JSON.stringify(f.resp);if(seen[k])return false;seen[k]=1;return true;})})).filter(r=>r.forms.length);}
+function pacTests(id){const out=[];sinRepetir(pacRecs(id)).forEach(r=>r.forms.forEach(f=>out.push({f,fecha:f.done||r.fecha,rec:r})));
+  return out.sort((a,b)=>a.f.code.localeCompare(b.f.code,"es")||String(a.fecha).localeCompare(String(b.fecha)));}
+/* Qué cuestionarios de un envío todavía no volvieron completos. */
+function envFalta(e){const got={};DB.res.forEach(x=>{if(x.pid!==e.pid)return;x.rec.forms.forEach(f=>{if(rCount(f)<f.items.length)return;if(x.rec.env===e.id||(!x.rec.env&&String(f.done||x.rec.fecha)>=e.fecha))got[f.code]=1;});});return e.codes.filter(c=>!got[c]);}
+const pendientes=()=>DB.env.map(e=>({e,p:pac(e.pid),falta:envFalta(e)})).filter(o=>o.p&&o.falta.length);
+const sesSort=(a,b)=>(a.f+(a.h||"")).localeCompare(b.f+(b.h||""));
+const dlabel=f=>{try{return new Date(f+"T12:00:00").toLocaleDateString("es-AR",{weekday:"short",day:"numeric",month:"numeric"});}catch(e){return fdate(f);}};
+const dias=f=>Math.max(0,Math.round((new Date(today()+"T12:00:00")-new Date(f+"T12:00:00"))/864e5));
+const hace=f=>{const d=dias(f);return d===0?"hoy":d===1?"ayer":"hace "+d+" días";};
+const bar=(t,back,cnt)=>`<header class="bar"><button class="ghost" data-a="${back?"go":"home"}"${back?` data-v="${back[0]}" data-k="${esc(back[2]||"")}"`:""}>‹ ${back?back[1]:"Inicio"}</button><div class="t">${t}</div><div class="cnt mono">${cnt==null?"":cnt}</div></header>`;
+const rtag=t=>`<span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none">${t}</span>`;
+const fl=role=>flash?`<div class="msg" role="${role||"status"}">${flash}</div>`:"";
+const loadBtn=(pri,label)=>`<label class="btn ${pri?"pri":"soft"} filebtn" for="a-files">${label||"Cargar resultados (PDF)"}</label><input type="file" id="a-files" accept="application/pdf,.pdf" multiple hidden>`;
+const badBox=()=>BAD.length?`<div class="msg" role="alert">No pude leer ${BAD.length===1?"este archivo":"estos archivos"}: ${BAD.map(esc).join(", ")}. Tiene que ser el PDF original que generó Svar, sin imprimir ni volver a guardar.</div>`:"";
+const sesRow=(s,d,nom)=>`<button class="lrow" data-a="go" data-v="sesion" data-s="${esc(s.id)}"><span class="mono h">${d?esc(dlabel(s.f))+" · ":""}${esc(s.h||"--:--")}</span><span class="g">${nom?esc(pac(s.pid).nombre):esc(s.nota||"Sesión")}${nom&&s.nota?`<small>${esc(s.nota)}</small>`:""}</span><span class="ch">›</span></button>`;
+const linkBox=()=>{const L=V.link||"";return L?(V.short?`<input type="text" id="p-link" readonly aria-label="Link" class="mono" value="${esc(L)}">`:`<textarea id="p-link" readonly aria-label="Link" style="min-height:96px;word-break:break-all">${esc(L)}</textarea>`)+
+  `<div class="two"><button class="btn" data-a="cplink">Copiar link</button>${CAN_SHARE?'<button class="btn" data-a="shlink">Compartir</button>':'<button class="btn soft" data-a="openlink">Probar acá</button>'}</div>`:"";};
+const libPick=()=>`<div class="opts" role="group" aria-label="Formularios para enviar">${PRO.lib.map(f=>`<button class="opt${PSEL[f.id]?" on":""}" role="checkbox" aria-checked="${!!PSEL[f.id]}" data-a="psel" data-f="${esc(f.id)}"><span class="mk"></span><span class="mono" style="font-weight:600;flex:1">${esc(f.code)}</span><span class="mono" style="font-size:12px;color:var(--muted)">${f.items.length} preg.${f.key?" · clave":""}</span></button>`).join("")}</div>`;
+
+function vPanel(){
+  const ok=s=>pac(s.pid),hoy=DB.ses.filter(s=>s.f===today()&&ok(s)).sort(sesSort),prox=DB.ses.filter(s=>s.f>today()&&ok(s)).sort(sesSort).slice(0,5),pen=pendientes(),
+    ult=DB.res.filter(x=>pac(x.pid)).sort((a,b)=>String(b.a).localeCompare(String(a.a))).slice(0,5);
+  return brand()+`<main>${noStore()}
+    <div class="stats">
+      <button class="stat" data-a="go" data-v="pacientes"><b>${activos().length}</b><span>Pacientes activos</span></button>
+      <div class="stat"><b>${hoy.length}</b><span>Sesiones hoy</span></div>
+      <div class="stat"><b>${pen.length}</b><span>Envíos sin responder</span></div>
+    </div>
+    ${fl()}${badBox()}
+    <section class="sec"><h2>Hoy ${rtag(esc(dlabel(today())))}</h2>
+      ${hoy.length?hoy.map(s=>sesRow(s,false,true)).join(""):'<p class="note pad">Sin sesiones cargadas para hoy.</p>'}
+      <div class="pad"><button class="btn soft" style="width:100%" data-a="go" data-v="sesion">Agregar sesión</button></div></section>
+    ${prox.length?`<section class="sec"><h2>Próximas sesiones</h2>${prox.map(s=>sesRow(s,true,true)).join("")}</section>`:""}
+    ${pen.length?`<section class="sec"><h2>Esperando respuesta</h2>${pen.map(o=>`<button class="lrow" data-a="go" data-v="paciente" data-k="${esc(o.p.id)}"><span class="g">${esc(o.p.nombre)}<small class="mono">${o.falta.map(esc).join(" · ")}</small></span><span class="mono h" style="min-width:0">${hace(o.e.fecha)}</span><span class="ch">›</span></button>`).join("")}</section>`:""}
+    ${ult.length?`<section class="sec"><h2>Últimos resultados</h2>${ult.map(x=>`<button class="lrow" data-a="go" data-v="paciente" data-k="${esc(x.pid)}"><span class="g">${esc(pac(x.pid).nombre)}<small class="mono">${x.rec.forms.map(f=>esc(f.code)).join(" · ")}</small></span><span class="mono h" style="min-width:0">${esc(fdate(x.a))}</span><span class="ch">›</span></button>`).join("")}</section>`:""}
+    ${loadBtn(true)}
+    <div class="two"><button class="btn" data-a="go" data-v="pacientes">Pacientes</button><button class="btn" data-a="go" data-v="herr">Herramientas</button></div>
+  </main>`;
+}
+function vPacientes(){
+  const act=activos(),arch=DB.pacs.filter(p=>p.activo===false).sort(byName);
+  const row=p=>{const codes=[...new Set(pacTests(p.id).map(t=>t.f.code))],pen=DB.env.some(e=>e.pid===p.id&&envFalta(e).length);
+    return `<button class="lrow pacrow" data-a="go" data-v="paciente" data-k="${esc(p.id)}" data-q="${esc(normName(p.nombre))}"><span class="g">${esc(p.nombre)}<small class="mono">${codes.length?codes.map(esc).join(" · "):"Sin resultados"}${pen?" · esperando respuesta":""}</small></span><span class="ch">›</span></button>`;};
+  return bar("Pacientes",null,act.length||"")+`<main>
+    <button class="btn pri" data-a="go" data-v="pacedit">Nuevo paciente</button>
+    ${fl()}${badBox()}
+    ${act.length>6?'<input type="search" id="pq" placeholder="Buscar por nombre" aria-label="Buscar paciente">':""}
+    ${act.length?`<section class="sec">${act.map(row).join("")}</section>`:'<div class="msg">Todavía no hay pacientes. Creá una ficha, o cargá un PDF de resultados y la ficha se arma sola.</div>'}
+    ${arch.length?`<details class="sec"><summary style="padding:12px 14px;cursor:pointer;color:var(--muted)">Archivados (${arch.length})</summary>${arch.map(row).join("")}</details>`:""}
+    ${loadBtn(false)}
+  </main>`;
+}
+function vPacEdit(){
+  const p=pac(V.pk),d=V.d||p||{};
+  const f=(id,lab,k,type,extra)=>`<p class="field"><label for="${id}">${lab}</label><input type="${type||"text"}" id="${id}" value="${esc(d[k]||"")}" ${extra||""}></p>`;
+  return bar(p?"Editar ficha":"Nuevo paciente",p?["paciente","Ficha",p.id]:["pacientes","Pacientes"])+`<main>
+    ${f("pe-nombre","Nombre y apellido","nombre","text",'autocomplete="off"')}${f("pe-nac","Fecha de nacimiento","nac","date")}${f("pe-sexo","Sexo","sexo")}
+    ${f("pe-tel","Teléfono (opcional)","tel","tel",'inputmode="tel"')}${f("pe-mail","Mail (opcional)","mail","email",'inputmode="email"')}
+    <p class="field"><label for="pe-nota">Notas (opcional)</label><textarea id="pe-nota" class="ta">${esc(d.nota||"")}</textarea></p>
+    <p class="note">El nombre, el nacimiento y el sexo van en los formularios que le mandes, así no los tiene que cargar.</p>
+    ${fl("alert")}
+    <button class="btn pri" data-a="pacsave">Guardar</button>
+  </main>`;
+}
+function vPaciente(){
+  const p=pac(V.pk);if(!p)return vPacientes();const ts=pacTests(p.id),n=picked().length;let hayClave=false;
+  const ses=DB.ses.filter(s=>s.pid===p.id).sort(sesSort),fut=ses.filter(s=>s.f>=today()),past=ses.filter(s=>s.f<today()).slice(-3).reverse();
+  const envs=DB.env.filter(e=>e.pid===p.id).slice().reverse();
+  const res=ts.map(t=>{const f=t.f,key=keyFor(f),sc=key?scoreForm(f,key):null,c=rCount(f);if(sc)hayClave=true;
+    return `<section class="sec"><h2><span class="tcode">${esc(f.code)}</span>${rtag((t.fecha?esc(fdate(t.fecha))+" · ":"")+c+" / "+f.items.length)}</h2>
+      ${sc?`<table class="pts"><thead><tr><th>Escala</th><th>Puntaje</th><th>Rango</th><th>Resp.</th></tr></thead><tbody>${sc.scales.map((e,j)=>`<tr${j?"":' class="tot"'}><td>${esc(e.name)}</td><td class="mono"><b>${e.sum}</b></td><td class="mono">${e.min}–${e.max}</td><td class="mono${e.ans<e.n?" inc":""}">${e.ans}/${e.n}</td></tr>`).join("")}</tbody></table>
+        ${sc.scales[0].ans<sc.scales[0].n?'<p class="note pad" style="padding-bottom:0">Hay preguntas sin responder: el puntaje suma solo las respondidas.</p>':""}
+        ${key.ref?`<p class="note pad" style="padding-bottom:0">Referencia publicada: ${esc(key.ref)}</p>`:""}
+        <p class="note pad" style="padding-bottom:0">Clave: ${esc(key.src||"sin nombre")}</p>`
+      :`<p class="note pad" style="padding-bottom:0">Este formulario no tiene clave de evaluación cargada.</p>`}
+      <details class="resp"><summary>Ver respuestas</summary>
+        <div class="grid">${f.items.map((it,i)=>{const l=rLet(f,i);return `<div class="cell${l?"":" none"}"><span>${esc(it.n)}</span><b>${l||"–"}</b></div>`;}).join("")}</div>
+        ${f.scale?`<div class="legend">${f.scale.map((o,k)=>`<div><b class="mono">${LT(k)}</b> ${esc(o)}</div>`).join("")}</div>`:""}
+        <table><tbody>${f.items.map((it,i)=>{const a=rTxt(f,i),pt=sc?sc.pts[i]:null;
+          return `<tr><td class="n">${esc(it.n)}</td><td>${esc(it.t)}<span class="ans${a?"":" none"}">${a?esc(a):"Sin responder"}</span></td>${sc?`<td class="n" style="text-align:right">${pt==null?"":pt}</td>`:""}</tr>`;}).join("")}</tbody></table>
+      </details></section>`;}).join("");
+  return bar(esc(p.nombre),["pacientes","Pacientes"])+`<main>
+    <section class="sec"><h2>Ficha${p.activo===false?rtag("archivado"):""}</h2><div class="pad stack">
+      <dl class="datos"><dt>Nacimiento</dt><dd>${esc(fdate(p.nac))||"—"}</dd><dt>Sexo</dt><dd>${esc(p.sexo)||"—"}</dd>${p.tel?`<dt>Teléfono</dt><dd>${esc(p.tel)}</dd>`:""}${p.mail?`<dt>Mail</dt><dd>${esc(p.mail)}</dd>`:""}${p.nota?`<dt>Notas</dt><dd style="white-space:pre-wrap">${esc(p.nota)}</dd>`:""}</dl>
+      <button class="btn soft" data-a="go" data-v="pacedit" data-k="${esc(p.id)}">Editar ficha</button></div></section>
+    <section class="sec"><h2>Sesiones</h2>
+      ${fut.map(s=>sesRow(s,true,false)).join("")}${past.length?`<p class="note pad" style="padding-bottom:0">Anteriores</p>`+past.map(s=>sesRow(s,true,false)).join(""):""}
+      ${ses.length?"":'<p class="note pad" style="padding-bottom:0">Sin sesiones cargadas.</p>'}
+      <div class="pad"><button class="btn soft" style="width:100%" data-a="go" data-v="sesion" data-k="${esc(p.id)}">Agregar sesión</button></div></section>
+    <section class="sec"><h2>Enviar formularios</h2><div class="pad stack">
+      ${PRO.lib.length?`<p class="note">Tildá los que querés mandarle. El link ya lleva sus datos.</p>${libPick()}
+        <button class="btn pri" data-a="paclink" ${n&&!busy?"":"disabled"}>${busy==="link"?"Creando el link…":n?"Crear link con "+n+(n===1?" formulario":" formularios"):"Marcá al menos uno"}</button>
+        ${V.linkmsg?`<div class="msg" role="status">${V.linkmsg}</div>`:""}${linkBox()}`
+      :'<div class="msg">Todavía no tenés formularios. Agregalos desde Herramientas.</div>'}</div>
+      ${envs.map(e=>{const fa=envFalta(e);return `<div class="lrow"><span class="g"><span class="mono">${e.codes.map(esc).join(" · ")}</span><small>Enviado el ${esc(fdate(e.fecha))} · ${fa.length?(fa.length<e.codes.length?"falta "+fa.map(esc).join(", "):"sin responder"):"recibido"}</small></span><button class="btn soft mini" data-a="envcp" data-e="${esc(e.id)}">Copiar link</button><button class="btn soft mini" data-a="envrm" data-e="${esc(e.id)}" aria-label="Quitar envío">✕</button></div>`;}).join("")}</section>
+    ${res||'<div class="msg">Todavía no hay resultados de este paciente.</div>'}
+    ${hayClave?'<p class="note">Los puntajes salen de tus claves y son orientativos, sin interpretación. La lectura clínica es tuya.</p>':""}
+    ${fl()}${badBox()}
+    ${ts.length?`<button class="btn pri" data-a="pacxlsx" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":"Descargar Excel"}</button>`:""}
+    ${loadBtn(false,"Cargar un PDF de resultados")}
+    <button class="btn soft" data-a="pacarch">${p.activo===false?"Volver a activo":"Archivar paciente"}</button>
+    ${V.confirm==="pac"?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="pacrm2">Sí, borrar todo</button></div>`:`<button class="btn danger" data-a="confirm" data-v="pac">Borrar ficha y resultados</button>`}
+  </main>`;
+}
+function vSesion(){
+  const s=V.sid?DB.ses.find(x=>x.id===V.sid):null,pk=s?s.pid:V.pk,ps=activos();if(pk&&pac(pk)&&!ps.includes(pac(pk)))ps.push(pac(pk));
+  const head=bar(s?"Sesión":"Nueva sesión",V.pk?["paciente","Ficha",V.pk]:null);
+  if(!ps.length)return head+`<main><div class="msg">Primero cargá un paciente.</div><button class="btn pri" data-a="go" data-v="pacedit">Nuevo paciente</button></main>`;
+  return head+`<main>
+    <p class="field"><label for="s-pac">Paciente</label><select id="s-pac">${ps.map(p=>`<option value="${esc(p.id)}"${p.id===pk?" selected":""}>${esc(p.nombre)}</option>`).join("")}</select></p>
+    <p class="field"><label for="s-f">Fecha</label><input type="date" id="s-f" value="${esc(s?s.f:today())}"></p>
+    <p class="field"><label for="s-h">Hora</label><input type="time" id="s-h" value="${esc(s?s.h:"")}"></p>
+    <p class="field"><label for="s-n">Nota (opcional)</label><input type="text" id="s-n" value="${esc(s?s.nota:"")}"></p>
+    ${fl("alert")}
+    <button class="btn pri" data-a="sessave">Guardar</button>
+    ${s?`<button class="btn soft" data-a="go" data-v="paciente" data-k="${esc(s.pid)}">Ver ficha</button><button class="btn danger" data-a="sesrm">Quitar sesión</button>`:""}
+  </main>`;
+}
+function vHerr(){
+  const lib=PRO.lib,hay=DB.pacs.length||DB.res.length;
+  return bar("Herramientas")+`<main>
+    ${fl()}
+    <section class="sec"><h2>Mis formularios ${rtag(lib.length||"")}</h2>
+      ${lib.map(f=>`<button class="lrow" data-a="go" data-v="form" data-f="${esc(f.id)}"><span class="g"><span class="mono">${esc(f.code)}</span><small>${f.items.length} preguntas · ${f.key?"con clave de evaluación":"sin clave"}</small></span><span class="ch">›</span></button>`).join("")}
+      <div class="pad stack">${lib.length?"":'<p class="note">Los cargás una vez y se los mandás a cualquier paciente desde su ficha.</p>'}
+        <button class="btn pri" data-a="go" data-v="agregar">Agregar formulario</button>
+        <div class="two"><label class="btn soft filebtn" for="p-import">Importar</label><button class="btn soft" data-a="exportlib" ${lib.length?"":"disabled"}>Exportar</button></div>
+        <input type="file" id="p-import" accept="application/json,.json" hidden></div></section>
+    <section class="sec"><h2>Enviar sin ficha</h2><div class="pad stack">
+      <p class="note">Para encuestas o personas que no son pacientes: el link le pide los datos a quien responde.</p>
+      <button class="btn soft" data-a="go" data-v="abierto" ${lib.length?"":"disabled"}>Crear link abierto</button></div></section>
+    <section class="sec"><h2>Respaldo</h2><div class="pad stack">
+      <p class="note">Un archivo con tus pacientes, sesiones, resultados y formularios. Sirve de copia de seguridad y para pasar todo a otro dispositivo. Contiene datos de salud y no va cifrado: guardalo en un lugar seguro.</p>
+      <div class="two"><button class="btn soft" data-a="dbexport">Exportar respaldo</button><label class="btn soft filebtn" for="d-import">Importar respaldo</label></div>
+      <input type="file" id="d-import" accept="application/json,.json" hidden>
+      ${hay?(V.confirm==="db"?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="dbwipe2">Sí, borrar todo</button></div>`:`<button class="btn danger" data-a="confirm" data-v="db">Borrar pacientes y resultados</button>`):""}</div></section>
+    <section class="sec"><h2>Agenda</h2><div class="pad"><p class="note">Las sesiones se cargan a mano desde el inicio o desde cada ficha. La conexión con Google Calendar todavía no está disponible.</p></div></section>
+    <section class="sec"><h2>Cuenta</h2><div class="pad"><div class="two"><button class="btn soft" data-a="go" data-v="perfil">Mi perfil</button><button class="btn soft" data-a="go" data-v="config">Apariencia</button></div></div></section>
     ${installBox()}
-    <p class="note">Para que el link sea corto, los formularios en blanco que mandás se guardan en el servidor de fuge1618, junto con los datos de tu perfil. Las respuestas no pasan por ahí: quedan en el teléfono del paciente hasta que él te las envía por mail o te comparte el PDF.</p>
+    <p class="note">Pacientes, sesiones y resultados quedan solo en este dispositivo. Al servidor de fuge1618 van únicamente los formularios en blanco que mandás, con tu nombre y mail, y los archivos que subís para que la app interprete un formulario nuevo.</p>
+  </main>`;
+}
+function vAbierto(){
+  const n=picked().length;
+  return bar("Link abierto",["herr","Herramientas"])+`<main>
+    <p class="note">Quien abra este link carga su nombre, nacimiento y sexo antes de responder. Cuando te mande el PDF, cargalo y se arma su ficha.</p>
+    ${libPick()}
+    <button class="btn pri" data-a="mklink" ${n&&!busy?"":"disabled"}>${busy==="link"?"Creando el link…":n?"Crear link con "+n+(n===1?" formulario":" formularios"):"Marcá al menos uno"}</button>
+    ${fl()}${linkBox()}
+  </main>`;
+}
+function vForm(){
+  const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return vHerr();const k=f.key;
+  return bar(`<span class="mono">${esc(f.code)}</span>`,["herr","Herramientas"],f.items.length+" preg.")+`<main>
+    ${fl()}
+    <section class="sec"><h2>Formato</h2>
+      <table><tbody>${f.items.slice(0,3).map(it=>`<tr><td class="n">${esc(it.n)}</td><td>${esc(it.t)}<span class="ans none">${opts(f,it).map(esc).join(" · ")}</span></td></tr>`).join("")}
+      ${f.items.length>3?`<tr><td class="n">…</td><td class="note">y ${f.items.length-3} más</td></tr>`:""}</tbody></table></section>
+    <section class="sec"><h2>Clave de evaluación</h2><div class="pad stack">
+      ${k?`<div><div style="font-weight:600">${esc(keySummary(k,f))}</div>${k.subs.length?`<div class="note" style="margin-top:4px">${k.subs.map(u=>esc(u.name)+" ("+u.n.length+")").join(" · ")}</div>`:""}
+        ${k.src?`<p class="note" style="margin-top:8px">Clave: ${esc(k.src)}</p>`:""}${k.ref?`<p class="note">Referencia: ${esc(k.ref)}</p>`:""}</div>`
+      :'<div class="msg">Sin clave: las fichas van a mostrar las respuestas, sin puntaje.</div>'}
+      <p class="note">La clave queda solo en este dispositivo. No viaja en los links, no la ve quien responde y no se muestra en el Excel.</p></div></section>
+    <button class="btn pri" data-a="ededit">Editar formulario y clave</button>
+    ${V.confirm==="form"?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="formrm2">Sí, quitar</button></div>`:`<button class="btn danger" data-a="confirm" data-v="form">Quitar este formulario</button>`}
+  </main>`;
+}
+function vAgregar(){
+  return bar("Agregar formulario",["herr","Herramientas"])+`<main>
+    <p style="margin:0">Subí el formulario en blanco: fotos, PDF o texto, también de anotaciones a mano. Si tenés la clave de evaluación, sumala. Svar lo interpreta y después lo revisás antes de guardarlo.</p>
+    <label class="btn soft filebtn" for="ag-files">${AG.files.length?"Agregar más archivos":"Elegir fotos o PDF"}</label>
+    <input type="file" id="ag-files" accept="image/*,application/pdf" multiple hidden>
+    ${AG.files.length?`<section class="sec">${AG.files.map((f,i)=>`<div class="lrow"><span class="g">${esc(f.name)}<small>${Math.max(1,Math.round(f.size/1024))} KB</small></span><button class="btn soft mini" data-a="agrm" data-i="${i}" aria-label="Quitar archivo">✕</button></div>`).join("")}</section>`:""}
+    <p class="field"><label for="ag-text">O pegá o escribí el texto</label><textarea id="ag-text" class="ta" style="min-height:110px">${esc(AG.text||"")}</textarea></p>
+    <button class="btn pri" data-a="agia" ${busy?"disabled":""}>${busy==="ia"?"Interpretando… puede tardar un minuto":"Interpretar"}</button>
+    ${fl()}
+    <button class="btn soft" data-a="edblank">Cargarlo a mano</button>
+    ${V.manual?`<section class="sec"><h2>Con tu propia IA</h2><div class="pad stack">
+      <p class="note">1. Copiá las indicaciones. 2. Pegalas en Claude, ChatGPT o Gemini junto con el formulario (y la clave, si la tenés). 3. Pegá acá la respuesta.</p>
+      <button class="btn" data-a="cpprompt">Copiar indicaciones</button>
+      ${V.showp?`<textarea readonly aria-label="Indicaciones para la IA">${esc(PROMPT)}</textarea>`:""}
+      <textarea id="f-json" aria-label="Respuesta de la IA" placeholder='{"code": ... }'></textarea>
+      <button class="btn" data-a="parse">Leer respuesta</button></div></section>`:""}
+  </main>`;
+}
+/* Editor: sirve para cargar a mano, para corregir y para revisar lo que interpretó la IA. */
+const lines=s=>String(s||"").split("\n").map(x=>x.trim()).filter(Boolean);
+const nums=s=>String(s||"").split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean);
+function edFrom(f,ai){const P={};if(f.key)f.key.rules.forEach(r=>r.n.forEach(x=>{P[x]=r.p.join(", ");}));
+  return{id:ai?"":f.id||"",ai:!!ai,code:f.code||"",intro:f.intro||"",scale:(f.scale||[]).join("\n"),bp:"",bn:"",
+    items:(f.items||[]).map(it=>({n:String(it.n),t:it.t,o:(it.o||[]).join("\n"),multi:!!it.multi,p:P[String(it.n)]||"",x:!!(it.o||it.multi)})),
+    subs:f.key?f.key.subs.map(u=>u.name+": "+u.n.join(", ")).join("\n"):"",src:f.key?f.key.src:"",ref:f.key?f.key.ref:""};}
+function edRead(){if(!ED||!document.getElementById("ed-code"))return;const v=id=>{const e=document.getElementById(id);return e?e.value:null;};
+  ED.code=v("ed-code");ED.intro=v("ed-intro");ED.scale=v("ed-scale");ED.subs=v("ed-subs");ED.src=v("ed-src");ED.ref=v("ed-ref");ED.bp=v("ed-bp");ED.bn=v("ed-bn");
+  ED.items.forEach((it,i)=>{it.n=v("ed-n"+i).trim();it.t=v("ed-t"+i);it.p=v("ed-p"+i);const o=v("ed-o"+i);if(o!=null){it.o=o;it.multi=document.getElementById("ed-m"+i).checked;}});}
+function edBuild(){const sc=lines(ED.scale),items=[],seen={},P={};
+  if(!ED.code.trim())return{err:"Falta el nombre corto del formulario."};
+  if(!ED.items.length)return{err:"Agregá al menos una pregunta."};
+  for(const it of ED.items){const o=lines(it.o),lab="La pregunta "+(it.n||"sin número");
+    if(!it.n)return{err:"Hay una pregunta sin número."};if(seen[it.n])return{err:"El número "+it.n+" está repetido."};seen[it.n]=1;
+    if(!it.t.trim())return{err:lab+" no tiene texto."};
+    if(o.length===1)return{err:lab+" tiene una sola opción propia."};
+    const os=o.length?o:sc;if(os.length<2)return{err:lab+" necesita al menos dos opciones, propias o comunes."};
+    const x={n:it.n,t:it.t.trim()};if(o.length)x.o=o;if(it.multi)x.multi=true;items.push(x);
+    if(it.p.trim()){const p=nums(it.p).map(Number);if(p.some(q=>!Number.isFinite(q)))return{err:lab+": los puntos tienen que ser números separados por coma."};
+      if(it.multi)return{err:lab+" permite varias respuestas y no puede llevar puntos."};
+      if(p.length!==os.length)return{err:lab+" tiene "+os.length+" opciones y "+p.length+" puntos."};P[it.n]=p;}}
+  const f={id:ED.id||"c"+uid(),code:ED.code.trim().slice(0,24),intro:ED.intro.trim(),items};if(sc.length>1)f.scale=sc;
+  const ks=Object.keys(P),sl=lines(ED.subs);
+  if(ks.length){const g={};ks.forEach(n=>{const k=JSON.stringify(P[n]);(g[k]=g[k]||[]).push(n);});const subs=[];
+    for(const l of sl){const i=l.lastIndexOf(":");if(i<1)return{err:'Subescalas: cada línea va como "Nombre: 1, 2, 3".'};subs.push({name:l.slice(0,i).trim(),n:nums(l.slice(i+1))});}
+    const c=keyCheck({src:ED.src,ref:ED.ref,rules:Object.keys(g).map(k=>({n:g[k],p:JSON.parse(k)})),subs},f);if(c.err)return{err:c.err};f.key=c.key;}
+  else if(sl.length)return{err:"Cargaste subescalas pero ninguna pregunta tiene puntos."};
+  return{f};}
+function vEditor(){
+  if(!ED)return vHerr();
+  return `<header class="bar"><button class="ghost" data-a="edcancel">‹ Cancelar</button><div class="t">${ED.id?"Editar formulario":"Nuevo formulario"}</div><div class="cnt mono">${ED.items.length} preg.</div></header>
+  <main>
+    ${ED.ai?'<div class="msg">Esto lo interpretó una IA y puede tener errores. Comparalo con el original: cantidad de preguntas, textos, opciones y puntos. Queda guardado recién cuando tocás Guardar.</div>':""}
+    <p class="field"><label for="ed-code">Nombre corto o sigla</label><input type="text" id="ed-code" maxlength="24" value="${esc(ED.code)}"></p>
+    <p class="field"><label for="ed-intro">Consigna general (opcional)</label><textarea id="ed-intro" class="ta">${esc(ED.intro)}</textarea></p>
+    <p class="field"><label for="ed-scale">Opciones comunes a todas las preguntas, una por línea</label><textarea id="ed-scale" class="ta">${esc(ED.scale)}</textarea></p>
+    <section class="sec"><h2>Preguntas</h2>
+      ${ED.items.map((it,i)=>`<div class="edi"><div class="edr"><input type="text" id="ed-n${i}" class="edn" value="${esc(it.n)}" aria-label="Número de pregunta"><textarea id="ed-t${i}" class="ta" aria-label="Texto de la pregunta">${esc(it.t)}</textarea></div>
+        <div class="edr"><input type="text" id="ed-p${i}" class="mono" inputmode="text" placeholder="Puntos: 1, 1, 0, 0" value="${esc(it.p)}" aria-label="Puntos por opción"><button class="btn soft mini" data-a="edopt" data-i="${i}">Opciones</button><button class="btn soft mini" data-a="edrm" data-i="${i}" aria-label="Quitar pregunta">✕</button></div>
+        ${it.x?`<textarea id="ed-o${i}" class="ta" placeholder="Opciones propias de esta pregunta, una por línea" aria-label="Opciones propias">${esc(it.o)}</textarea><label class="chk"><input type="checkbox" id="ed-m${i}"${it.multi?" checked":""}> Se puede elegir más de una</label>`:""}</div>`).join("")}
+      <div class="pad"><button class="btn soft" style="width:100%" data-a="edadd">Agregar pregunta</button></div></section>
+    <section class="sec"><h2>Clave de evaluación (opcional)</h2><div class="pad stack">
+      <p class="note">Los puntos van en cada pregunta: uno por opción, en el mismo orden (el primero es la opción A). Las preguntas sin puntos no suman. Para cargar muchas de una vez:</p>
+      <p class="field"><label for="ed-bp">Puntos por opción (vacío borra)</label><input type="text" id="ed-bp" class="mono" placeholder="1, 1, 0, 0" value="${esc(ED.bp)}"></p>
+      <p class="field"><label for="ed-bn">Preguntas a las que se aplica (vacío = todas)</label><input type="text" id="ed-bn" class="mono" placeholder="1, 4, 7" value="${esc(ED.bn)}"></p>
+      <div class="two"><button class="btn soft" data-a="edbulk" data-v="0">Aplicar</button><button class="btn soft" data-a="edbulk" data-v="1">Aplicar invertido</button></div>
+      ${V.bulkmsg?`<div class="msg" role="status">${V.bulkmsg}</div>`:""}
+      <p class="field"><label for="ed-subs">Subescalas, una por línea</label><textarea id="ed-subs" class="ta" placeholder="Nombre: 1, 2, 3">${esc(ED.subs)}</textarea></p>
+      <p class="field"><label for="ed-src">Nombre o fuente de la clave</label><input type="text" id="ed-src" value="${esc(ED.src)}" placeholder="Autores y año, o Clave propia"></p>
+      <p class="field"><label for="ed-ref">Valores de referencia (opcional)</label><input type="text" id="ed-ref" value="${esc(ED.ref)}"></p>
+    </div></section>
+    ${fl("alert")}
+    <button class="btn pri" data-a="edsave">Guardar formulario</button>
   </main>`;
 }
 function vPerfil(){
@@ -310,102 +563,6 @@ function vPerfil(){
     <p class="field"><label for="pf-mat">Matrícula (opcional)</label><input type="text" id="pf-mat" value="${esc(PRO.mat)}" placeholder="M.N. 000000"></p>
     ${flash?`<div class="msg" role="alert">${flash}</div>`:""}
     <button class="btn pri" data-a="saveperfil">${first?"Guardar y seguir":"Guardar"}</button>
-  </main>`;
-}
-function keyPrompt(f){const groups={};f.items.forEach(it=>{const o=opts(f,it),k=o.map((x,i)=>LT(i)+"="+x).join(" | ");(groups[k]=groups[k]||[]).push(String(it.n));});
-  return `Vas a pasar a un formato fijo la clave de puntuación (clave de corrección) del cuestionario "${f.code}", que te adjunto o pego junto con este mensaje.
-El cuestionario tiene ${f.items.length} preguntas. Estas son sus opciones, en orden, con la letra que usa la app:
-${Object.keys(groups).map(k=>"- Preguntas "+groups[k].join(", ")+": "+k).join("\n")}
-Reglas:
-- Usá solo lo que dice la clave que te paso. No inventes ni completes puntajes de memoria. Si algo no está en la clave, no lo pongas.
-- "rules": grupos de preguntas que puntúan igual. "n" son los números de pregunta; "p" son los puntos de cada opción en el mismo orden de las letras (A primero). Tiene que haber un punto por cada opción.
-- Las preguntas que no puntúan (de relleno) no van en ninguna regla.
-- Los ítems invertidos llevan los puntos al revés en "p".
-- "subs": subescalas, si la clave las define, con su nombre y sus preguntas. Si no hay, lista vacía.
-- "src": de dónde sale la clave (autores y año). "ref": valores de referencia o puntos de corte publicados, en una frase; si no hay, "".
-Respondé únicamente con JSON, sin texto antes ni después, con esta forma:
-{"src":"...","ref":"...","rules":[{"n":["1","2"],"p":[1,1,0,0]},{"n":["3"],"p":[0,0,1,1]}],"subs":[{"name":"...","n":["1","3"]}]}`;}
-function vForm(){
-  const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return vPro();const k=f.key;
-  return `<header class="bar"><button class="ghost" data-a="home">‹ Volver</button><div class="t mono">${esc(f.code)}</div><div class="cnt mono">${f.items.length} preg.</div></header>
-  <main>
-    <section class="sec"><h2>Clave de puntuación</h2><div class="pad stack">
-      ${k?`<div><div style="font-weight:600">${esc(keySummary(k,f))}</div>${k.subs.length?`<div class="note" style="margin-top:4px">${k.subs.map(u=>esc(u.name)+" ("+u.n.length+")").join(" · ")}</div>`:""}
-        ${k.src?`<p class="note" style="margin-top:8px">Fuente: ${esc(k.src)}</p>`:""}${k.ref?`<p class="note">Referencia: ${esc(k.ref)}</p>`:""}</div>
-        <p class="note">Con la clave cargada, la ficha del paciente muestra los puntajes y el Excel suma una hoja con ellos. Revisala contra tu material antes de usarla.</p>
-        ${V.confirm?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="keyrm2">Sí, quitar la clave</button></div>`:`<button class="btn danger" data-a="keyrm">Quitar la clave</button>`}`
-      :`<div class="msg">Este cuestionario no tiene clave. La ficha y el Excel van a traer las respuestas sin puntaje.</div>`}
-    </div></section>
-    <section class="sec"><h2>${k?"Cambiar la clave":"Cargar la clave"}</h2><div class="pad stack">
-      <p class="note">1. Copiá las indicaciones. 2. Pegalas en tu IA (Claude, ChatGPT, Gemini) junto con la clave de corrección que tengas de este cuestionario. 3. Pegá acá la respuesta.</p>
-      <button class="btn" data-a="cpkeyprompt">Copiar indicaciones</button>
-      ${V.showp?`<textarea readonly aria-label="Indicaciones para la IA">${esc(keyPrompt(f))}</textarea>`:""}
-      <textarea id="k-json" aria-label="Respuesta de la IA con la clave" placeholder='{"rules": ... }'></textarea>
-      <button class="btn pri" data-a="keyparse">Leer clave</button>
-      ${flash?`<div class="msg" role="status">${flash}</div>`:""}
-      <p class="note">La clave queda solo en tu biblioteca, en este dispositivo. No viaja en los links ni la ve quien responde.</p>
-    </div></section>
-  </main>`;
-}
-/* Pacientes: los resultados cargados quedan solo en este dispositivo (localStorage), como el registro comprimido que venía en cada PDF. */
-let DB=[],BAD=[];
-const pacKey=r=>(r.perfil.nombre||"").trim().toLowerCase().replace(/\s+/g," ")+"|"+(r.perfil.nac||"");
-function dbSave(){try{localStorage.setItem("svar.db",JSON.stringify({v:1,recs:DB.map(x=>({p:x.p,n:x.n,a:x.a}))}));return true;}catch(e){return false;}}
-async function dbRead(arr){const out=[];for(const x of (Array.isArray(arr)?arr:[])){if(!x||typeof x.p!=="string"||!/^[zj][A-Za-z0-9_-]+$/.test(x.p))continue;
-  try{const rec=recordRead(await unpack(x.p));if(rec&&rec.forms.length)out.push({p:x.p,n:String(x.n||"").slice(0,120),a:String(x.a||""),rec});}catch(e){}}return out;}
-function dbAdd(xs){let n=0;const back=DB.slice();xs.forEach(x=>{if(!DB.some(y=>y.p===x.p)){DB.push(x);n++;}});if(n&&!dbSave()){DB=back;return -1;}return n;}
-function pacientes(){const m=new Map();DB.forEach(x=>{const k=pacKey(x.rec);if(!m.has(k))m.set(k,{k,nombre:x.rec.perfil.nombre||"Sin nombre",nac:x.rec.perfil.nac,sexo:x.rec.perfil.sexo,recs:[]});m.get(k).recs.push(x.rec);});
-  return[...m.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre,"es"));}
-/* Un mismo cuestionario puede llegar en dos PDF (suelto y dentro de otro): si las respuestas son idénticas cuenta una sola vez. */
-function sinRepetir(recs){const seen={};return recs.map(r=>Object.assign({},r,{forms:r.forms.filter(f=>{const k=pacKey(r)+"|"+f.code+"|"+JSON.stringify(f.resp);if(seen[k])return false;seen[k]=1;return true;})})).filter(r=>r.forms.length);}
-function pacTests(g){const out=[];sinRepetir(g.recs).forEach(r=>r.forms.forEach(f=>out.push({f,fecha:f.done||r.fecha,rec:r})));
-  return out.sort((a,b)=>a.f.code.localeCompare(b.f.code,"es")||String(a.fecha).localeCompare(String(b.fecha)));}
-const DBNOTE='<p class="note">Los resultados quedan guardados solo en este dispositivo: no van a ningún servidor. Son datos de salud de tus pacientes; cuidá quién tiene acceso a este dispositivo y a los respaldos.</p>';
-function vPacientes(){
-  const gs=pacientes();
-  return `<header class="bar"><button class="ghost" data-a="home">‹ Volver</button><div class="t">Pacientes</div><div class="cnt mono">${gs.length||""}</div></header>
-  <main>
-    <p style="margin:0">Cargá los PDF que te mandaron, de una vez o en tandas. Svar los guarda agrupados por paciente.</p>
-    <label class="btn pri filebtn" for="a-files">Cargar PDF</label>
-    <input type="file" id="a-files" accept="application/pdf,.pdf" multiple hidden>
-    ${BAD.length?`<div class="msg" role="alert">No pude leer ${BAD.length===1?"este archivo":"estos archivos"}: ${BAD.map(esc).join(", ")}. Tiene que ser el PDF original que generó Svar, sin imprimir ni volver a guardar. Si es anterior al 23/11/2026, pedile al paciente que lo genere de nuevo.</div>`:""}
-    ${flash?`<div class="msg" role="status">${flash}</div>`:""}
-    ${gs.length?`<div class="opts">${gs.map(g=>{const ts=pacTests(g),codes=[...new Set(ts.map(t=>t.f.code))];
-      return `<button class="opt pac" data-a="pacopen" data-k="${esc(g.k)}"><span style="flex:1;min-width:0"><span style="font-weight:600;display:block">${esc(g.nombre)}</span><span class="mono" style="font-size:12px;color:var(--muted);display:block;margin-top:2px">${codes.map(esc).join(" · ")}</span></span><span class="mono" style="font-size:12px;color:var(--muted)">${g.nac?esc(fdate(g.nac)):""} ›</span></button>`;}).join("")}</div>
-    ${gs.length>1?`<button class="btn soft" data-a="pacxlsx" data-k="" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":"Descargar un Excel con todos"}</button>`:""}`
-    :'<div class="msg">Todavía no hay pacientes cargados.</div>'}
-    <section class="sec"><h2>Respaldo</h2><div class="pad stack">
-      <p class="note">El respaldo es un archivo con tus pacientes y tu biblioteca. Sirve como copia de seguridad y para pasar todo a otro dispositivo: lo exportás acá y lo importás allá.</p>
-      <div class="two"><button class="btn soft" data-a="dbexport" ${gs.length?"":"disabled"}>Exportar respaldo</button><label class="btn soft filebtn" for="d-import">Importar respaldo</label></div>
-      <input type="file" id="d-import" accept="application/json,.json" hidden>
-      ${gs.length?(V.confirm?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="dbwipe2">Sí, borrar todos</button></div>`:`<button class="btn danger" data-a="dbwipe">Borrar todos los pacientes</button>`):""}
-    </div></section>
-    ${DBNOTE}
-  </main>`;
-}
-function vPaciente(){
-  const g=pacientes().find(x=>x.k===V.pk);if(!g)return vPacientes();const ts=pacTests(g);let hayClave=false;
-  const body=ts.map((t,ti)=>{const f=t.f,key=keyFor(f),sc=key?scoreForm(f,key):null,n=rCount(f);if(sc)hayClave=true;
-    return `<section class="sec"><h2><span class="tcode">${esc(f.code)}</span><span class="r mono" style="margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none">${t.fecha?esc(fdate(t.fecha))+" · ":""}${n} / ${f.items.length}</span></h2>
-      ${sc?`<table class="pts"><thead><tr><th>Escala</th><th>Puntaje</th><th>Rango</th><th>Resp.</th></tr></thead><tbody>${sc.scales.map((e,j)=>`<tr${j?"":' class="tot"'}><td>${esc(e.name)}</td><td class="mono"><b>${e.sum}</b></td><td class="mono">${e.min}–${e.max}</td><td class="mono${e.ans<e.n?" inc":""}">${e.ans}/${e.n}</td></tr>`).join("")}</tbody></table>
-        ${sc.scales[0].ans<sc.scales[0].n?'<p class="note pad" style="padding-bottom:0">Hay preguntas sin responder: el puntaje suma solo las respondidas.</p>':""}
-        ${key.ref?`<p class="note pad" style="padding-bottom:0">Referencia publicada: ${esc(key.ref)}</p>`:""}`
-      :`<p class="note pad" style="padding-bottom:0">Sin clave de puntuación en tu biblioteca para este cuestionario.</p>`}
-      <details class="resp"><summary>Ver respuestas</summary>
-        <div class="grid">${f.items.map((it,i)=>{const l=rLet(f,i);return `<div class="cell${l?"":" none"}"><span>${esc(it.n)}</span><b>${l||"–"}</b></div>`;}).join("")}</div>
-        ${f.scale?`<div class="legend">${f.scale.map((o,k)=>`<div><b class="mono">${LT(k)}</b> ${esc(o)}</div>`).join("")}</div>`:""}
-        <table><tbody>${f.items.map((it,i)=>{const a=rTxt(f,i),p=sc?sc.pts[i]:null;
-          return `<tr><td class="n">${esc(it.n)}</td><td>${esc(it.t)}<span class="ans${a?"":" none"}">${a?esc(a):"Sin responder"}</span></td>${sc?`<td class="n" style="text-align:right">${p==null?"":p}</td>`:""}</tr>`;}).join("")}</tbody></table>
-      </details></section>`;}).join("");
-  return `<header class="bar"><button class="ghost" data-a="go" data-v="pacientes">‹ Pacientes</button><div class="t">${esc(g.nombre)}</div><div class="cnt"></div></header>
-  <main>
-    <section class="sec"><h2>Datos</h2><div class="pad">
-      <dl class="datos"><dt>Nombre</dt><dd>${esc(g.nombre)}</dd><dt>Nacimiento</dt><dd>${esc(fdate(g.nac))||"—"}</dd><dt>Sexo</dt><dd>${esc(g.sexo)||"—"}</dd><dt>Cuestionarios</dt><dd>${ts.length}</dd></dl></div></section>
-    ${body}
-    ${hayClave?'<p class="note">Los puntajes salen de las claves de tu biblioteca y son orientativos, sin interpretación. La lectura clínica es tuya.</p>':""}
-    <button class="btn pri" data-a="pacxlsx" data-k="${esc(g.k)}" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":"Descargar Excel"}</button>
-    ${flash?`<div class="msg" role="status">${flash}</div>`:""}
-    ${V.confirm?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="pacrm2">Sí, quitar</button></div>`:`<button class="btn danger" data-a="pacrm">Quitar este paciente</button>`}
   </main>`;
 }
 const PROMPT=`Vas a transcribir un cuestionario de opción múltiple (de los que se completan tildando una respuesta) para mostrarlo en una app.
@@ -421,31 +578,6 @@ Reglas:
 - Solo si además te paso la clave de puntuación del cuestionario, agregá "key" con esta forma: {"src":"autores y año","ref":"valores de referencia publicados o \"\"","rules":[{"n":["1","2"],"p":[1,1,0,0]}],"subs":[{"name":"...","n":["1"]}]}, donde "p" son los puntos de cada opción en orden y las preguntas que no puntúan no figuran. No inventes una clave de memoria: si no te la paso, no pongas "key".
 Respondé únicamente con JSON, sin texto antes ni después, con esta forma:
 {"code":"AB-1","intro":"...","scale":["...","..."],"items":[{"n":"1","t":"..."},{"n":"2","t":"...","o":["...","..."],"multi":false}]}`;
-function vAgregar(){
-  const head=`<header class="bar"><button class="ghost" data-a="home">‹ Volver</button><div class="t">Agregar formulario</div><div class="cnt"></div></header>`;
-  if(draft){const f=draft;
-    return head+`<main>
-      <h1 class="big">Revisá antes de guardar</h1>
-      <p class="field"><label for="f-code">Nombre corto del cuestionario</label><input type="text" id="f-code" value="${esc(f.code)}" maxlength="24"></p>
-      <section class="sec"><h2>${f.items.length} preguntas encontradas</h2>
-      ${f.key?`<div class="pad" style="border-bottom:1px solid var(--line)"><b>Clave incluida:</b> ${esc(keySummary(f.key,f))}</div>`:""}
-      <table><tbody>${f.items.slice(0,4).map(it=>`<tr><td class="n">${esc(it.n)}</td><td>${esc(it.t)}<span class="ans none">${opts(f,it).map(esc).join(" · ")}</span></td></tr>`).join("")}
-      ${f.items.length>4?`<tr><td class="n">…</td><td class="note">y ${f.items.length-4} más</td></tr>`:""}</tbody></table></section>
-      <p class="note">La transcripción la hizo una IA y puede equivocarse. Compará la cantidad de preguntas y las opciones con el original.</p>
-      <div class="two"><button class="btn soft" data-a="discard">Descartar</button><button class="btn pri" data-a="keep">Guardar</button></div>
-    </main>`;}
-  return head+`<main>
-    <section class="sec"><h2>Paso 1 · Copiá las indicaciones</h2><div class="pad stack">
-      <p class="note">Le dicen a tu IA cómo transcribir el formulario sin cambiarle nada.</p>
-      <button class="btn" data-a="cpprompt">Copiar indicaciones</button>
-      ${V.showp?`<textarea readonly aria-label="Indicaciones para la IA">${esc(PROMPT)}</textarea>`:""}</div></section>
-    <section class="sec"><h2>Paso 2 · Pasáselo a tu IA</h2><div class="pad"><p class="note">Abrí Claude, ChatGPT o Gemini, pegá las indicaciones y adjuntá el PDF o las fotos del formulario en blanco. Si tenés la clave de puntuación, adjuntala también; si no, la podés cargar después desde "Clave".</p></div></section>
-    <section class="sec"><h2>Paso 3 · Pegá la respuesta acá</h2><div class="pad stack">
-      <textarea id="f-json" aria-label="Respuesta de la IA" placeholder='{"code": ... }'></textarea>
-      <button class="btn pri" data-a="parse">Leer formulario</button>
-      ${flash?`<div class="msg" role="status">${flash}</div>`:""}</div></section>
-  </main>`;
-}
 
 /* ---------- modo paciente ---------- */
 function vInicio(){
@@ -510,7 +642,7 @@ function vTablero(){
   <main>
     <section class="sec"><h2>Datos</h2><div class="pad">
       <dl class="datos"><dt>Nombre</dt><dd>${esc(p.nombre)||"—"}</dd><dt>Nacimiento</dt><dd>${esc(fdate(p.nac))||"—"}</dd><dt>Sexo</dt><dd>${esc(p.sexo)||"—"}</dd></dl>
-      <button class="btn soft" style="margin-top:12px;width:100%" data-a="go" data-v="datos">${p.nombre?"Editar datos":"Completar datos"}</button></div></section>
+      ${P.fix?"":`<button class="btn soft" style="margin-top:12px;width:100%" data-a="go" data-v="datos">${p.nombre?"Editar datos":"Completar datos"}</button>`}</div></section>
     ${withAns.length?`<section class="sec"><h2>Enviar</h2><div class="pad stack">
       <p class="note">${P.d?"Destinatario: "+esc(quien())+". ":""}Elegí qué cuestionarios van.</p>
       <div class="opts" role="group" aria-label="Cuestionarios a enviar">${withAns.map(f=>`<button class="opt${isSel(f.id)?" on":""}" role="checkbox" aria-checked="${isSel(f.id)}" data-a="sel" data-f="${esc(f.id)}"><span class="mk"></span><span class="mono" style="font-weight:600;flex:1">${esc(f.code)}</span><span class="mono" style="font-size:12px;color:var(--muted)">${S.done[f.id]?"completo":count(f)+" / "+f.items.length}</span></button>`).join("")}</div>
@@ -533,6 +665,11 @@ function vTablero(){
 }
 function vDatos(){
   const p=S.perfil,first=!datosOk();
+  if(P.fix)return `<header class="bar"><button class="ghost" data-a="home">‹ Inicio</button><div class="t">Mis datos</div><div class="cnt"></div></header><main>
+    <section class="sec"><h2>Datos</h2><div class="pad stack"><dl class="datos"><dt>Nombre</dt><dd>${esc(p.nombre)||"—"}</dd><dt>Nacimiento</dt><dd>${esc(fdate(p.nac))||"—"}</dd><dt>Sexo</dt><dd>${esc(p.sexo)||"—"}</dd></dl>
+      <p class="note">Estos datos los cargó ${esc(P.d)||"tu profesional"}. Si hay algo mal, avisale.</p></div></section>
+    <section class="sec"><h2>Borrar</h2><div class="pad stack"><p class="note">Borra de este teléfono todas tus respuestas. No se puede deshacer.</p>
+      ${V.confirm?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="wipe2">Sí, borrar todo</button></div>`:`<button class="btn danger" data-a="wipe">Borrar todas mis respuestas</button>`}</div></section></main>`;
   return (first?brand():`<header class="bar"><button class="ghost" data-a="home">‹ Inicio</button><div class="t">Mis datos</div><div class="cnt"></div></header>`)+`<main>
     ${first?sender()+'<h1 class="big" style="margin-top:0">Antes de empezar, tus datos</h1><p style="margin:0">Son obligatorios: identifican tus respuestas en lo que le envíes al profesional. Se guardan solo en este teléfono.</p>':'<p class="note">Aparecen en el encabezado de lo que envíes.</p>'}
     <p class="field"><label for="f-nombre">Nombre y apellido</label><input type="text" id="f-nombre" autocomplete="name" value="${esc(p.nombre)}"></p>
@@ -559,14 +696,14 @@ function vConfig(){
   </main>`;
 }
 function vRoto(){return brand()+`<main><h1 class="big">Este link está incompleto</h1><p style="margin:0">Puede haberse cortado al copiarlo. Pedile a tu profesional que te lo mande de nuevo.</p><button class="btn soft" data-a="topro">Soy profesional: abrir Svar</button></main>`;}
-const VIEWS={pro:vPro,form:vForm,pacientes:vPacientes,paciente:vPaciente,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed,config:vConfig};
+const VIEWS={panel:vPanel,form:vForm,pacientes:vPacientes,paciente:vPaciente,pacedit:vPacEdit,sesion:vSesion,herr:vHerr,abierto:vAbierto,editor:vEditor,perfil:vPerfil,agregar:vAgregar,inicio:vInicio,intro:vIntro,q:vQ,fin:vFin,tablero:vTablero,datos:vDatos,roto:vRoto,sinred:vSinRed,config:vConfig};
 function render(top){document.getElementById("app").innerHTML=VIEWS[V.name]();if(top)window.scrollTo(0,0);}
 function goForm(id){go("form",{fid:id});}
 function go(name,extra){
   if(MODE==="pac"&&!datosOk())name="datos";
   if(MODE==="pro"&&!profOk())name="perfil";
   V=Object.assign({name},extra||{});flash="";render(true);}
-const home=()=>MODE==="pac"?"inicio":"pro";
+const home=()=>MODE==="pac"?"inicio":"panel";
 
 /* ---------- acciones ---------- */
 let advT=0;
@@ -575,7 +712,7 @@ function next(){const f=F(V.fid);if(V.i<f.items.length-1)go("q",{fid:V.fid,i:V.i
 async function copyText(t){try{await navigator.clipboard.writeText(t);return true;}catch(e){return false;}}
 const ACT={
   home(){draft=null;go(home());},
-  go(el){if(el.dataset.v==="form")return goForm(el.dataset.f);go(el.dataset.v);},
+  go(el){const d=el.dataset;if(MODE==="pro"&&(d.v==="paciente"||d.v==="abierto")&&V.name!==d.v)Object.keys(PSEL).forEach(k=>delete PSEL[k]);go(d.v,{pk:d.k||"",fid:d.f||"",sid:d.s||""});},
   open(el){openForm(el.dataset.f);},
   start(){go("q",{fid:V.fid,i:0});},
   goto(el){go("q",{fid:el.dataset.f,i:+el.dataset.i});},
@@ -594,74 +731,116 @@ const ACT={
   saveperfil(){const n=document.getElementById("pf-nombre").value.trim(),m=document.getElementById("pf-mail").value.trim(),t=document.getElementById("pf-mat").value.trim();
     PRO.nombre=n;PRO.mail=m;PRO.mat=t;
     if(!n||!MAIL_RE.test(m)){flash=!n?"Falta tu nombre.":"Revisá el mail: no parece una dirección válida.";render(false);return;}
-    V.link="";save();go("pro");},
+    save();go("panel");},
   wipe(){V.confirm=true;render(false);},
-  cancel(){V.confirm=false;render(false);},
-  wipe2(){S={perfil:{nombre:"",nac:"",sexo:""},resp:{},done:{}};save();go("inicio");},
+  cancel(){V.confirm="";render(false);},
+  wipe2(){S={perfil:P.fix?S.perfil:{nombre:"",nac:"",sexo:""},resp:{},done:{}};save();go("inicio");},
   sel(el){SEL[el.dataset.f]=!isSel(el.dataset.f);flash="";render(false);},
   sep(el){SEP=el.dataset.v==="1";render(false);},
   pdf(){exportFiles("save");},
   share(){exportFiles("share");},
   async cpmail(){const ok=await copyText(P.e);flash=ok?"Mail copiado.":"No se pudo copiar. Mantené apretada la dirección para copiarla.";render(false);},
   /* profesional */
-  async cpkeyprompt(){const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return;const ok=await copyText(keyPrompt(f));V.showp=!ok;flash=ok?"Indicaciones copiadas. Pegalas en tu IA junto con la clave.":"No se pudo copiar solo. Copiá el texto que aparece arriba.";render(false);},
-  keyparse(){const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return;const t=document.getElementById("k-json").value,o=looseJson(t);
-    if(!o){flash=t.trim()?"No pude leer eso. Pegá la respuesta completa de la IA, desde la primera llave { hasta la última }.":"Pegá primero la respuesta de tu IA.";render(false);return;}
-    const c=keyCheck(o.key||o,f);if(c.err){flash=c.err+" Revisá la clave y probá de nuevo.";render(false);return;}
-    f.key=c.key;save();V.confirm=false;flash="Clave guardada: "+esc(keySummary(c.key,f))+".";render(true);},
-  keyrm(){V.confirm=true;render(false);},
-  keyrm2(){const f=PRO.lib.find(x=>x.id===V.fid);if(f){delete f.key;save();}V.confirm=false;flash="Clave quitada.";render(false);},
-  pacopen(el){go("paciente",{pk:el.dataset.k});},
-  pacrm(){V.confirm=true;render(false);},
-  pacrm2(){const back=DB.slice();DB=DB.filter(x=>pacKey(x.rec)!==V.pk);if(!dbSave()){DB=back;flash="No se pudo guardar el cambio.";V.confirm=false;render(false);return;}go("pacientes");flash="Paciente quitado de este dispositivo.";render(false);},
-  dbwipe(){V.confirm=true;render(false);},
-  dbwipe2(){DB=[];BAD=[];try{localStorage.removeItem("svar.db");}catch(e){}V.confirm=false;flash="Se borraron todos los pacientes de este dispositivo.";render(false);},
-  async dbexport(){const r=await saveFile("respaldo-svar-"+today()+".json",new Blob([JSON.stringify({svar:1,tipo:"respaldo",fecha:today(),forms:PRO.lib,pacientes:DB.map(x=>({p:x.p,n:x.n,a:x.a}))})],{type:"application/json"}));
-    flash=r==="saved"?"Respaldo descargado. Contiene datos de tus pacientes: guardalo en un lugar seguro.":"No se pudo descargar.";render(false);},
-  async pacxlsx(el){const k=el.dataset.k,gs=pacientes(),g=k?gs.find(x=>x.k===k):null,recs=sinRepetir(g?g.recs:DB.map(x=>x.rec));if(!recs.length)return;busy="xlsx";flash="";render(false);
-    try{const clean=t=>String(t||"").replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g,"").trim(),codes=[...new Set(recs.flatMap(r=>r.forms.map(f=>f.code)))].join(" ").replace(/[^\w\s-]/g,"").slice(0,60);
-      const r=await saveFile((g?(clean(g.nombre)||"Paciente"):gs.length+" pacientes")+" - "+codes+" - "+today()+".xlsx",await makeXlsx(recs));
-      flash=r==="saved"?"Excel listo. Buscalo en tus descargas.":"No se pudo descargar.";}
+  confirm(el){V.confirm=el.dataset.v;render(false);},
+  pacsave(){const g=id=>document.getElementById(id).value.trim(),d={nombre:g("pe-nombre"),nac:g("pe-nac"),sexo:g("pe-sexo"),tel:g("pe-tel"),mail:g("pe-mail"),nota:g("pe-nota")};
+    if(!d.nombre){V.d=d;flash="Falta el nombre.";render(false);return;}
+    let p=pac(V.pk);if(p)Object.assign(p,d);else{p=Object.assign({id:"p"+uid(),activo:true,alta:today()},d);DB.pacs.push(p);}
+    if(!dbSave()){V.d=d;flash="No se pudo guardar en este dispositivo.";render(false);return;}go("paciente",{pk:p.id});},
+  pacarch(){const p=pac(V.pk);if(!p)return;p.activo=p.activo===false;dbSave();flash=p.activo?"Paciente activo de nuevo.":"Paciente archivado: sale del listado y del panel, y se conserva todo.";render(false);},
+  pacrm2(){const id=V.pk;DB.pacs=DB.pacs.filter(p=>p.id!==id);DB.ses=DB.ses.filter(s=>s.pid!==id);DB.env=DB.env.filter(e=>e.pid!==id);DB.res=DB.res.filter(x=>x.pid!==id);dbSave();go("pacientes");flash="Ficha borrada de este dispositivo.";render(false);},
+  sessave(){const pid=document.getElementById("s-pac").value,f=document.getElementById("s-f").value,h=document.getElementById("s-h").value,nota=document.getElementById("s-n").value.trim();
+    if(!f){flash="Falta la fecha.";render(false);return;}
+    let s=V.sid&&DB.ses.find(x=>x.id===V.sid);if(s)Object.assign(s,{pid,f,h,nota});else DB.ses.push({id:"s"+uid(),pid,f,h,nota});
+    dbSave();if(V.pk)go("paciente",{pk:V.pk});else go("panel");},
+  sesrm(){DB.ses=DB.ses.filter(x=>x.id!==V.sid);dbSave();if(V.pk)go("paciente",{pk:V.pk});else go("panel");},
+  psel(el){PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.linkmsg="";flash="";render(false);},
+  async paclink(){const p=pac(V.pk),fs=picked();if(!p||!fs.length)return;busy="link";V.link="";V.linkmsg="";render(false);
+    const packed=await pack({e:PRO.mail.trim(),d:PRO.nombre.trim(),m:(PRO.mat||"").trim(),p:PAL||"",f:fs.map(toWire)});let id="",why="";
+    try{const r=await fetch(API+"/f",{method:"POST",body:packed});if(r.ok){const t=(await r.text()).trim();if(/^[a-z0-9]{8}$/.test(t))id=t;}else why=r.status===429?"limite":"";}catch(e){}
+    const env={id:"e"+uid(),pid:p.id,fecha:today(),codes:fs.map(f=>f.code),link:""};
+    /* Los datos del paciente van después del # del link: el navegador no los manda a ningún servidor. */
+    const who=await pack({i:p.id,x:env.id,n:p.nombre,b:p.nac||"",s:p.sexo||""});
+    env.link=BASE+(id?"#k="+id:"#s="+packed)+"&p="+who;DB.env.push(env);dbSave();
+    Object.keys(PSEL).forEach(k=>delete PSEL[k]);busy="";V.short=!!id;V.link=env.link;
+    V.linkmsg=id?"Link listo. Mandáselo por el medio que usen.":(why==="limite"?"Se crearon muchos links hoy desde esta conexión. ":"No se pudo conectar para crear el link corto. ")+"Este link largo funciona igual.";render(false);},
+  async envcp(el){const e=DB.env.find(x=>x.id===el.dataset.e);if(!e)return;const ok=await copyText(e.link);flash=ok?"Link copiado.":"No se pudo copiar.";render(false);},
+  envrm(el){DB.env=DB.env.filter(x=>x.id!==el.dataset.e);dbSave();render(false);},
+  async pacxlsx(){const p=pac(V.pk),recs=p?sinRepetir(pacRecs(p.id)):[];if(!recs.length)return;busy="xlsx";flash="";render(false);
+    try{const clean=t=>String(t||"").replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g,"").trim();
+      const r=await saveFile((clean(p.nombre)||"Paciente")+" - "+today()+".xlsx",await makeXlsx(p,recs));flash=r==="saved"?"Excel listo. Buscalo en tus descargas.":"No se pudo descargar.";}
     catch(e){flash="No se pudo armar el Excel. Revisá la conexión e intentá de nuevo.";}
     busy="";render(false);},
-  psel(el){PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.confirm=false;flash="";render(false);},
-  async mklink(){const fs=picked();if(!fs.length)return;if(!profOk()){go("perfil");return;}const mail=PRO.mail.trim();
-    busy="link";flash="";V.link="";render(false);
-    const packed=await pack({e:mail,d:PRO.nombre.trim(),m:(PRO.mat||"").trim(),p:PAL||"",f:fs.map(toWire)});let link="",why="";
+  dbwipe2(){DB={pacs:[],ses:[],env:[],res:[]};BAD=[];try{localStorage.removeItem("svar.db");}catch(e){}V.confirm="";flash="Se borraron pacientes, sesiones y resultados de este dispositivo.";render(false);},
+  async dbexport(){const r=await saveFile("respaldo-svar-"+today()+".json",new Blob([JSON.stringify({svar:1,tipo:"respaldo",fecha:today(),forms:PRO.lib,db:{pacs:DB.pacs,ses:DB.ses,env:DB.env,res:DB.res.map(x=>({p:x.p,n:x.n,a:x.a,pid:x.pid}))}})],{type:"application/json"}));
+    flash=r==="saved"?"Respaldo descargado. Contiene datos de tus pacientes: guardalo en un lugar seguro.":"No se pudo descargar.";render(false);},
+  async mklink(){const fs=picked();if(!fs.length)return;busy="link";flash="";V.link="";render(false);
+    const packed=await pack({e:PRO.mail.trim(),d:PRO.nombre.trim(),m:(PRO.mat||"").trim(),p:PAL||"",f:fs.map(toWire)});let link="",why="";
     try{const r=await fetch(API+"/f",{method:"POST",body:packed});
       if(r.ok){const id=(await r.text()).trim();if(/^[a-z0-9]{8}$/.test(id))link=BASE+"#k="+id;}else why=r.status===429?"limite":"";}catch(e){}
     busy="";V.short=!!link;V.link=link||BASE+"#s="+packed;
-    flash=link?"":(why==="limite"?"Se crearon muchos links hoy desde esta conexión. ":"No se pudo conectar para crear el link corto. ")+"Este link largo funciona igual; para el corto, probá de nuevo más tarde.";
-    save();render(false);},
-  async cplink(){const ok=await copyText(V.link);flash=ok?"Link copiado. Pegalo en el chat con tu paciente.":"No se pudo copiar solo. Mantené apretado el link de arriba y copialo.";render(false);},
+    flash=link?"":(why==="limite"?"Se crearon muchos links hoy desde esta conexión. ":"No se pudo conectar para crear el link corto. ")+"Este link largo funciona igual.";render(false);},
+  async cplink(){const ok=await copyText(V.link);const m=ok?"Link copiado.":"No se pudo copiar solo. Mantené apretado el link y copialo.";if(V.name==="paciente")V.linkmsg=m;else flash=m;render(false);},
   async shlink(){try{await navigator.share({title:"Cuestionarios",text:"Te mando los cuestionarios para completar desde el celular:",url:V.link});}catch(e){}},
   openlink(){location.href=V.link;},
-  rm(){V.confirm=true;render(false);},
-  rm2(){PRO.lib=PRO.lib.filter(f=>!PSEL[f.id]);Object.keys(PSEL).forEach(k=>delete PSEL[k]);V.confirm=false;V.link="";save();render(false);},
-  async exportlib(){const r=await saveFile("biblioteca-svar.json",new Blob([JSON.stringify({svar:1,forms:PRO.lib},null,1)],{type:"application/json"}));flash=r==="saved"?"Biblioteca descargada. Guardala como respaldo o pasala a otro dispositivo.":"No se pudo descargar.";render(false);},
-  async cpprompt(){const ok=await copyText(PROMPT);V.showp=!ok;flash=ok?"Indicaciones copiadas. Ahora pegalas en tu IA junto con el formulario.":"No se pudo copiar solo. Copiá el texto que aparece en el paso 1.";render(false);},
-  parse(){const t=document.getElementById("f-json").value,o=looseJson(t),f=o?normalize([o]):null;
+  async exportlib(){const r=await saveFile("formularios-svar.json",new Blob([JSON.stringify({svar:1,forms:PRO.lib},null,1)],{type:"application/json"}));flash=r==="saved"?"Formularios descargados, con sus claves. No incluye pacientes.":"No se pudo descargar.";render(false);},
+  /* formularios */
+  formrm2(){PRO.lib=PRO.lib.filter(f=>f.id!==V.fid);save();go("herr");flash="Formulario quitado. Los resultados ya cargados se conservan.";render(false);},
+  ededit(){const f=PRO.lib.find(x=>x.id===V.fid);if(!f)return;ED=edFrom(f,false);go("editor",{fid:f.id});},
+  edblank(){agRead();ED=edFrom({code:"",items:[{n:"1",t:""}]},false);go("editor");},
+  edcancel(){const id=ED&&ED.id;ED=null;if(id)go("form",{fid:id});else go("agregar");},
+  edopt(el){edRead();flash="";const it=ED.items[+el.dataset.i];it.x=!it.x;if(!it.x){it.o="";it.multi=false;}render(false);},
+  edrm(el){edRead();flash="";ED.items.splice(+el.dataset.i,1);render(false);},
+  edadd(){edRead();flash="";const m=ED.items.reduce((a,it)=>Math.max(a,parseInt(it.n,10)||0),0);ED.items.push({n:String(m+1),t:"",o:"",multi:false,p:"",x:false});render(false);
+    const e=document.getElementById("ed-t"+(ED.items.length-1));if(e)e.focus();},
+  edbulk(el){edRead();flash="";const pts=nums(ED.bp),ns=nums(ED.bn),inv=el.dataset.v==="1";
+    if(pts.some(x=>!Number.isFinite(Number(x)))){V.bulkmsg="Los puntos tienen que ser números separados por coma.";render(false);return;}
+    const val=(inv?pts.slice().reverse():pts).join(", ");let c=0;ED.items.forEach(it=>{if(it.multi||(ns.length&&!ns.includes(it.n)))return;it.p=val;c++;});
+    const miss=ns.filter(x=>!ED.items.some(it=>it.n===x));V.bulkmsg=(pts.length?"Puntos aplicados a ":"Puntos borrados en ")+c+(c===1?" pregunta.":" preguntas.")+(miss.length?" No existen: "+esc(miss.join(", "))+".":"");render(false);},
+  edsave(){edRead();const r=edBuild();if(r.err){flash=esc(r.err);render(false);return;}const f=r.f,i=PRO.lib.findIndex(g=>g.id===f.id);
+    if(PRO.lib.some(g=>g.id!==f.id&&g.code.trim().toLowerCase()===f.code.toLowerCase())){flash="Ya tenés un formulario llamado "+esc(f.code)+". Cambiale el nombre a este, o quitá el otro primero.";render(false);return;}
+    if(i>=0)PRO.lib[i]=f;else PRO.lib.push(f);save();ED=null;go("form",{fid:f.id});flash="Formulario guardado"+(f.key?", con clave: "+esc(keySummary(f.key,f)):", sin clave")+".";render(false);},
+  agrm(el){agRead();AG.files.splice(+el.dataset.i,1);render(false);},
+  async agia(){agRead();if(!AG.files.length&&!AG.text.trim()){flash="Subí un archivo o pegá el texto primero.";render(false);return;}
+    busy="ia";flash="";render(false);let f=null,why="";
+    try{const parts=[];let tot=0;for(const file of AG.files){const part=await filePart(file);tot+=part.data.length;parts.push(part);}
+      if(tot>14e6)why="grande";else{const r=await fetch(API+"/ia",{method:"POST",body:JSON.stringify({parts,text:AG.text})});
+        if(r.ok){const o=looseJson(await r.text());f=o?normalize([o]):null;if(!f)why="vacio";}else why=r.status===429?"limite":r.status===413?"grande":r.status===422?"vacio":"off";}}catch(e){why="off";}
+    busy="";if(f){ED=edFrom(f,true);AG={files:[],text:""};go("editor");return;}
+    V.manual=why==="off"||why==="limite";
+    flash={grande:"Los archivos son demasiado pesados. Probá con menos páginas o fotos más livianas.",vacio:"No encontré un cuestionario en lo que subiste. Probá con fotos más nítidas, o cargalo a mano.",limite:"Se llegó al límite de interpretaciones de hoy. Probá mañana, usá tu propia IA con los pasos de abajo, o cargalo a mano.",off:"La interpretación automática no está disponible en este momento. Podés usar tu propia IA con los pasos de abajo, o cargarlo a mano."}[why];render(false);},
+  async cpprompt(){agRead();const ok=await copyText(PROMPT);V.showp=!ok;flash=ok?"Indicaciones copiadas.":"No se pudo copiar solo. Copiá el texto que aparece abajo.";render(false);},
+  parse(){agRead();const t=document.getElementById("f-json").value,o=looseJson(t),f=o?normalize([o]):null;
     if(!f){flash=t.trim()?"No pude leer eso como formulario. Pegá la respuesta completa de la IA, desde la primera llave { hasta la última }.":"Pegá primero la respuesta de tu IA.";render(false);return;}
-    draft=f;go("agregar");},
-  discard(){draft=null;go("agregar");},
-  keep(){draft.code=(document.getElementById("f-code").value.trim()||"Formulario").slice(0,24);addToLib([draft]);PSEL[draft.id]=true;draft=null;save();go("pro");},
+    ED=edFrom(f,true);AG={files:[],text:""};go("editor");},
   async install(){if(!installEvt)return;const e=installEvt;installEvt=null;try{e.prompt();await e.userChoice;}catch(x){}render(false);},
   topro(){history.replaceState(null,"",BASE);location.reload();},
   retry(){location.reload();}
 };
 document.addEventListener("click",e=>{const el=e.target.closest("[data-a]");if(!el||el.disabled)return;const fn=ACT[el.dataset.a];if(fn)fn(el);});
-async function importFile(file){let nf=0,np=0,full=false;
+function agRead(){const e=document.getElementById("ag-text");if(e)AG.text=e.value;}
+async function filePart(file){
+  if(/^image\//.test(file.type)){const bmp=await createImageBitmap(file),k=Math.min(1,1800/Math.max(bmp.width,bmp.height)),c=document.createElement("canvas");c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+    c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);return{mime:"image/jpeg",data:c.toDataURL("image/jpeg",.85).split(",")[1]};}
+  const u=new Uint8Array(await file.arrayBuffer());let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return{mime:"application/pdf",data:btoa(s)};}
+async function importFile(file){let nf=0,np=0,nr=0,full=false;
   try{const o=JSON.parse(await file.text()),arr=Array.isArray(o)?o:(o&&o.forms)||[];const fs=arr.map(x=>normalize([x])).filter(Boolean);nf=fs.length;if(nf){addToLib(fs);save();}
-    if(o&&Array.isArray(o.pacientes)){const xs=await dbRead(o.pacientes),r=dbAdd(xs);if(r<0)full=true;else np=xs.length;}}catch(err){}
-  if(full)return"No queda espacio en este navegador para guardar esos pacientes.";
-  if(!nf&&!np)return"Ese archivo no es una biblioteca ni un respaldo de Svar.";
-  return"Se importó: "+[nf&&(nf===1?"1 formulario":nf+" formularios"),np&&(np===1?"1 resultado de pacientes":np+" resultados de pacientes")].filter(Boolean).join(" y ")+".";}
+    const d=o&&o.db,back=JSON.stringify({pacs:DB.pacs,ses:DB.ses,env:DB.env}),backRes=DB.res.slice();
+    if(d&&typeof d==="object"){const merge=(k,ok)=>(Array.isArray(d[k])?d[k]:[]).forEach(x=>{if(x&&x.id&&ok(x)&&!DB[k].some(y=>y.id===x.id)){DB[k].push(x);if(k==="pacs")np++;}});
+      merge("pacs",x=>typeof x.nombre==="string");merge("ses",x=>typeof x.f==="string");merge("env",x=>Array.isArray(x.codes));}
+    const xs=await dbRead((d&&d.res)||(o&&o.pacientes)||[]);xs.forEach(x=>{if(DB.res.some(y=>y.p===x.p))return;const n0=DB.pacs.length;attach(x);if(DB.pacs.length>n0)np++;DB.res.push(x);nr++;});
+    if((np||nr||d)&&!dbSave()){const b=JSON.parse(back);DB.pacs=b.pacs;DB.ses=b.ses;DB.env=b.env;DB.res=backRes;full=true;}}catch(err){}
+  if(full)return"No queda espacio en este navegador para guardar ese respaldo.";
+  if(!nf&&!np&&!nr)return"Ese archivo no trae nada nuevo, o no es de Svar.";
+  return"Se importó: "+[nf&&(nf===1?"1 formulario":nf+" formularios"),np&&(np===1?"1 paciente":np+" pacientes"),nr&&(nr===1?"1 resultado":nr+" resultados")].filter(Boolean).join(", ")+".";}
+document.addEventListener("input",e=>{if(e.target.id!=="pq")return;const q=normName(e.target.value);document.querySelectorAll(".pacrow").forEach(el=>{el.hidden=!!q&&!el.dataset.q.includes(q);});});
 document.addEventListener("change",async e=>{
   if(e.target.id==="a-files"){const fl=Array.from(e.target.files||[]),xs=[];BAD=[];flash="";
-    for(const f of fl){const x=await readPdfRecord(f).catch(()=>null);if(x&&x.rec.forms.length)xs.push({p:x.p,n:f.name.slice(0,120),a:today(),rec:x.rec});else BAD.push(f.name);}
-    e.target.value="";const n=dbAdd(xs);
-    flash=n<0?"No queda espacio en este navegador para guardar más resultados. Exportá un respaldo y quitá pacientes que ya no necesites.":xs.length?(n?(n===1?"Se guardó 1 PDF.":"Se guardaron "+n+" PDF.")+(n<xs.length?" Los demás ya estaban cargados.":""):"Esos PDF ya estaban cargados."):"";
+    for(const f of fl){const x=await readPdfRecord(f).catch(()=>null);if(x&&x.rec.forms.length)xs.push({p:x.p,n:f.name.slice(0,120),a:today(),pid:V.name==="paciente"&&!x.rec.pid?V.pk:"",rec:x.rec});else BAD.push(f.name);}
+    e.target.value="";const who=dbAdd(xs);
+    if(!who)flash="No queda espacio en este navegador para guardar más resultados. Exportá un respaldo y borrá fichas que ya no necesites.";
+    else if(xs.length){const names=[...new Set(who.map(p=>p.nombre))];flash=who.length?(who.length===1?"Se guardó 1 PDF":"Se guardaron "+who.length+" PDF")+" en "+(names.length===1?"la ficha de ":"las fichas de ")+esc(names.join(", "))+"."+(who.length<xs.length?" Los demás ya estaban cargados.":""):"Esos PDF ya estaban cargados.";}
     render(false);return;}
+  if(e.target.id==="ag-files"){agRead();Array.from(e.target.files||[]).forEach(f=>{if(/^image\/|pdf$/.test(f.type))AG.files.push(f);});e.target.value="";flash="";render(false);return;}
   if(e.target.id!=="p-import"&&e.target.id!=="d-import")return;const file=e.target.files&&e.target.files[0];if(!file)return;
   flash=await importFile(file);e.target.value="";render(false);});
 
@@ -698,10 +877,10 @@ async function exportFiles(mode){
   busy="";render(false);
 }
 /* Registro: los datos del PDF en formato de máquina. Va escondido dentro del PDF (marca svar1:) y es lo que lee la pantalla Pacientes. */
-function recordFrom(fs){return{v:1,p:S.perfil,d:(P&&P.d)||"",m:(P&&P.m)||"",e:(P&&P.e)||"",t:today(),
+function recordFrom(fs){return{v:1,i:(P&&P.pid)||"",x:(P&&P.env)||"",p:S.perfil,d:(P&&P.d)||"",m:(P&&P.m)||"",e:(P&&P.e)||"",t:today(),
   f:fs.map(f=>Object.assign(toWire(f),{r:f.items.map((_,i)=>has(f,i)?R(f,i):null),k:S.done[f.id]||0}))};}
 function recordRead(o){if(!o||o.v!==1||!Array.isArray(o.f))return null;const p=o.p||{};
-  return{perfil:{nombre:String(p.nombre||""),nac:String(p.nac||""),sexo:String(p.sexo||"")},d:String(o.d||""),m:String(o.m||""),e:String(o.e||""),fecha:String(o.t||""),
+  return{perfil:{nombre:String(p.nombre||""),nac:String(p.nac||""),sexo:String(p.sexo||"")},d:String(o.d||""),m:String(o.m||""),e:String(o.e||""),fecha:String(o.t||""),pid:String(o.i||""),env:String(o.x||""),
     forms:o.f.map((w,i)=>{const f=fromWire(w,i);f.resp=Array.isArray(w.r)?w.r:[];f.done=w.k?String(w.k):"";return f;}).filter(f=>f.items.length)};}
 async function readPdfRecord(file){const u=new Uint8Array(await file.arrayBuffer());let t="";for(let i=0;i<u.length;i+=0x8000)t+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));
   const m=t.match(/svar1:([zj][A-Za-z0-9_-]+)/);if(!m)return null;try{const rec=recordRead(await unpack(m[1]));return rec?{p:m[1],rec}:null;}catch(e){return null;}}
@@ -736,48 +915,43 @@ const rLet=(f,i)=>{const r=f.resp[i];return !rHas(f,i)?null:Array.isArray(r)?rSo
 const rNum=(f,i)=>{const r=f.resp[i];return !rHas(f,i)?null:Array.isArray(r)?rSort(r).map(k=>k+1).join(","):r+1;};
 const rTxt=(f,i)=>{const os=opts(f,f.items[i]),r=f.resp[i];return !rHas(f,i)?null:Array.isArray(r)?rSort(r).map(k=>os[k]).join(" | "):os[r];};
 const rCount=f=>f.items.reduce((a,_,i)=>a+(rHas(f,i)?1:0),0);
-/* Excel para analizar: Resumen, Respuestas (una fila por respuesta), Opciones y una hoja por test con una fila por paciente. */
-async function makeXlsx(recs){
+/* Excel de un paciente: Resumen para leer, una hoja por cuestionario y, al final, hojas de datos planos para trabajar. La clave no se muestra: solo sus resultados y su nombre. */
+async function makeXlsx(p,recs){
   await loadScript(XLSX_URL);const wb=new window.ExcelJS.Workbook();wb.creator="Svar by fuge1618";wb.created=new Date();
   const D=s=>{if(!s)return null;const a=String(s).split("-").map(Number);return a.length===3&&a.every(Number.isFinite)?new Date(Date.UTC(a[0],a[1]-1,a[2])):null;};
-  const num=v=>/^\d+$/.test(String(v))?Number(v):String(v),DF="dd/mm/yyyy",INK="FF1A1A19",W={wrapText:true,vertical:"top"};
-  const table=(ws,xs)=>{const r=ws.getRow(1);r.font={bold:true,color:{argb:"FFFFFFFF"}};r.height=22;r.alignment={vertical:"middle"};r.eachCell(c=>{c.fill={type:"pattern",pattern:"solid",fgColor:{argb:INK}};});
-    ws.views=[{state:"frozen",ySplit:1,xSplit:xs||0}];ws.autoFilter={from:{row:1,column:1},to:{row:1,column:ws.columnCount}};};
+  const num=v=>/^\d+$/.test(String(v))?Number(v):String(v),DF="dd/mm/yyyy",INK="FF1A1A19",MUT="FF63615C",LINE="FFD0CEC7",W={wrapText:true,vertical:"top"},T={vertical:"top"};
+  const head=(ws,rn)=>{const r=ws.getRow(rn);r.height=20;r.eachCell(c=>{c.font={bold:true,color:{argb:"FFFFFFFF"}};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:INK}};c.alignment={vertical:"middle"};});};
+  const soft=(ws,rn)=>{ws.getCell("A"+rn).font={color:{argb:MUT}};};
+  const tests=[];recs.forEach(rec=>rec.forms.forEach(f=>{const key=keyFor(f);tests.push({f,fecha:f.done||rec.fecha,key,sc:key?scoreForm(f,key):null});}));
+  tests.sort((a,b)=>a.f.code.localeCompare(b.f.code,"es")||String(a.fecha).localeCompare(String(b.fecha)));
   const z=wb.addWorksheet("Resumen");
-  z.columns=[{header:"paciente",key:"pa",width:28},{header:"fecha_nacimiento",key:"fn",width:17,style:{numFmt:DF}},{header:"sexo",key:"sx",width:8},{header:"cuestionario",key:"cu",width:14},{header:"preguntas",key:"n",width:11},{header:"respondidas",key:"r",width:13},{header:"completo",key:"c",width:10},{header:"fecha_completado",key:"fc",width:17,style:{numFmt:DF}},{header:"fecha_informe",key:"fi",width:15,style:{numFmt:DF}}];
-  const a=wb.addWorksheet("Respuestas");
-  a.columns=[{header:"paciente",key:"pa",width:26},{header:"fecha_nacimiento",key:"fn",width:17,style:{numFmt:DF}},{header:"sexo",key:"sx",width:8},{header:"cuestionario",key:"cu",width:14},{header:"fecha_completado",key:"fc",width:17,style:{numFmt:DF}},
-    {header:"n_pregunta",key:"n",width:12},{header:"pregunta",key:"q",width:70,style:{alignment:W}},{header:"respuesta_letra",key:"l",width:16},{header:"respuesta_numero",key:"k",width:17},{header:"respuesta_texto",key:"t",width:38,style:{alignment:W}},{header:"puntos",key:"pt",width:9}];
-  const o=wb.addWorksheet("Opciones");
-  o.columns=[{header:"cuestionario",key:"cu",width:14},{header:"n_pregunta",key:"n",width:12},{header:"letra",key:"l",width:8},{header:"numero",key:"k",width:9},{header:"texto",key:"t",width:60,style:{alignment:W}}];
-  const y=wb.addWorksheet("Puntajes");
-  y.columns=[{header:"paciente",key:"pa",width:28},{header:"fecha_nacimiento",key:"fn",width:17,style:{numFmt:DF}},{header:"sexo",key:"sx",width:8},{header:"cuestionario",key:"cu",width:14},{header:"escala",key:"es",width:26},{header:"puntaje",key:"p",width:10},{header:"minimo",key:"mi",width:9},{header:"maximo",key:"ma",width:9},{header:"items_respondidos",key:"ir",width:18},{header:"items_de_la_escala",key:"ie",width:18},{header:"completo",key:"c",width:10},{header:"referencia_publicada",key:"rf",width:60,style:{alignment:W}}];
-  const notas={};let hayPuntaje=false;
-  const tests=[],seen={};
-  recs.forEach(rec=>{const p=rec.perfil,base={pa:p.nombre,fn:D(p.nac),sx:p.sexo};
-    rec.forms.forEach(f=>{const c=rCount(f);
-      z.addRow(Object.assign({},base,{cu:f.code,n:f.items.length,r:c,c:c===f.items.length?"SI":"NO",fc:D(f.done),fi:D(rec.fecha)}));
-      const key=keyFor(f),sc=key?scoreForm(f,key):null;
-      if(sc){hayPuntaje=true;notas[f.code]=key;sc.scales.forEach((e,j)=>y.addRow(Object.assign({},base,{cu:f.code,es:e.name,p:e.sum,mi:e.min,ma:e.max,ir:e.ans,ie:e.n,c:e.ans===e.n?"SI":"NO",rf:j===0?key.ref:""})));}
-      f.items.forEach((it,i)=>a.addRow(Object.assign({},base,{cu:f.code,fc:D(f.done),n:num(it.n),q:it.t,l:rLet(f,i),k:rNum(f,i),t:rTxt(f,i),pt:sc?sc.pts[i]:null})));
-      const sig=f.code+"|"+f.items.map(it=>it.n).join(",");
-      if(!seen[sig]){seen[sig]={code:f.code,items:f.items,rows:[]};tests.push(seen[sig]);
-        if(f.scale)f.scale.forEach((x,k)=>o.addRow({cu:f.code,n:"todas",l:LT(k),k:k+1,t:x}));
-        f.items.forEach(it=>{if(it.o)it.o.forEach((x,k)=>o.addRow({cu:f.code,n:num(it.n),l:LT(k),k:k+1,t:x}));});}
-      seen[sig].rows.push([p.nombre,D(p.nac),p.sexo,D(f.done)].concat(f.items.map((_,i)=>rNum(f,i))));});});
-  table(z);table(a);table(o);
-  if(hayPuntaje){table(y);y.eachRow((r,n)=>{if(n>1&&r.getCell(5).value==="Total")r.font={bold:true};});
-    const nt=wb.addWorksheet("Notas");nt.columns=[{width:16},{width:110,style:{alignment:W}}];
-    nt.addRow(["Puntajes","Suma de puntos según la clave cargada por el profesional en su biblioteca de Svar. Son orientativos: no constituyen diagnóstico ni interpretación. Si una escala figura incompleta, el puntaje solo suma las preguntas respondidas."]);
-    nt.addRow(["Control","La columna \"puntos\" de la hoja Respuestas muestra lo que sumó cada pregunta, para poder revisar la cuenta. Las preguntas sin puntos no forman parte del puntaje."]);
-    Object.keys(notas).forEach(c=>nt.addRow([c,(notas[c].src||"Clave sin fuente indicada.")+(notas[c].ref?" Referencia: "+notas[c].ref:"")]));
-    nt.getColumn(1).font={bold:true};}
-  else wb.removeWorksheet(y.id);
-  const used={Resumen:1,Puntajes:1,Respuestas:1,Opciones:1,Notas:1};
-  tests.forEach(t=>{let name=String(t.code).replace(/[\\\/\?\*\[\]:]/g," ").trim().slice(0,28)||"Test",base=name,c=2;while(used[name]){name=base.slice(0,26)+" "+c++;}used[name]=1;
-    const w=wb.addWorksheet(name);
-    w.columns=[{header:"paciente",width:26},{header:"fecha_nacimiento",width:17,style:{numFmt:DF}},{header:"sexo",width:8},{header:"fecha_completado",width:17,style:{numFmt:DF}}].concat(t.items.map(it=>({header:"p"+it.n,width:6,style:{alignment:{horizontal:"center"}}})));
-    t.rows.forEach(r=>w.addRow(r));table(w,1);});
+  const C={horizontal:"center",vertical:"top"};z.columns=[{width:16,style:{alignment:T}},{width:13,style:{numFmt:DF,alignment:{horizontal:"left",vertical:"top"}}},{width:13,style:{alignment:T}},{width:28,style:{alignment:W}},{width:10,style:{alignment:C}},{width:11,style:{alignment:C}},{width:46,style:{alignment:W}},{width:40,style:{alignment:W}}];
+  z.addRow([p.nombre||"Paciente"]);z.getCell("A1").font={bold:true,size:16};
+  z.addRow([[p.nac&&"Nacimiento: "+fdate(p.nac),p.sexo&&"Sexo: "+p.sexo].filter(Boolean).join("   ·   ")||null]);soft(z,2);
+  z.addRow(["Profesional: "+PRO.nombre+(PRO.mat?", matrícula "+PRO.mat:"")+"   ·   Informe del "+fdate(today())]);soft(z,3);
+  z.addRow([]);z.addRow(["Cuestionario","Fecha","Respondidas","Escala","Puntaje","Rango","Referencia publicada","Clave utilizada"]);head(z,5);
+  tests.forEach(t=>{const f=t.f,c=rCount(f)+" de "+f.items.length;let first;
+    if(t.sc)t.sc.scales.forEach((e,j)=>{const r=z.addRow(j?[null,null,e.ans<e.n?e.ans+" de "+e.n:null,e.name,e.sum,e.min+" a "+e.max]:[f.code,D(t.fecha),c,"Total",e.sum,e.min+" a "+e.max,t.key.ref||null,t.key.src||"Clave sin nombre"]);if(!j){first=r;r.eachCell(x=>{x.font={bold:true};});r.getCell(7).font={};r.getCell(8).font={};}});
+    else{first=z.addRow([f.code,D(t.fecha),c,"Sin puntaje",null,null,null,"Sin clave cargada"]);first.getCell(1).font={bold:true};}
+    for(let k=1;k<=8;k++)first.getCell(k).border={top:{style:"thin",color:{argb:LINE}}};});
+  z.addRow([]);const nr=z.rowCount+1;z.addRow(["Los puntajes suman los puntos de la clave indicada en cada cuestionario. Son orientativos y no constituyen diagnóstico. Si faltan respuestas, el puntaje suma solo las respondidas."]);
+  z.mergeCells(nr,1,nr,8);z.getCell("A"+nr).alignment=W;z.getCell("A"+nr).font={italic:true,color:{argb:MUT}};z.getRow(nr).height=32;z.views=[{state:"frozen",ySplit:5}];
+  const used={Resumen:1,"Datos respuestas":1,"Datos puntajes":1};
+  tests.forEach(t=>{const f=t.f;let name=String(f.code).replace(/[\\\/\?\*\[\]:]/g," ").trim().slice(0,28)||"Test",base=name,c=2;while(used[name]){name=base.slice(0,26)+" "+c++;}used[name]=1;
+    const w=wb.addWorksheet(name);w.columns=[{width:7,style:{alignment:T}},{width:80,style:{alignment:W}},{width:8,style:{alignment:{horizontal:"center",vertical:"top"}}},{width:42,style:{alignment:W}}];
+    const free=txt=>{w.addRow([txt]);const n=w.rowCount;w.mergeCells(n,1,n,4);const cell=w.getCell("A"+n);cell.alignment={wrapText:true,vertical:"top",horizontal:"left"};return cell;};
+    free(f.code).font={bold:true,size:16};
+    const e0=t.sc&&t.sc.scales[0];free("Realizado el "+fdate(t.fecha)+"   ·   "+rCount(f)+" de "+f.items.length+" respondidas"+(e0?"   ·   Total: "+e0.sum+" (rango "+e0.min+" a "+e0.max+")":"")).font={color:{argb:MUT}};
+    if(f.scale){const s="Opciones:   "+f.scale.map((o,k)=>LT(k)+" = "+o).join("   ·   ");free(s).font={color:{argb:MUT}};w.getRow(w.rowCount).height=15*Math.ceil(s.length/115);}
+    w.addRow([]);const hr=w.rowCount+1;w.addRow(["N°","Pregunta","Letra","Respuesta"]);head(w,hr);
+    f.items.forEach((it,i)=>w.addRow([num(it.n),it.t,rLet(f,i)||"—",rTxt(f,i)||"Sin responder"]));w.views=[{state:"frozen",ySplit:hr}];});
+  const flat=(ws)=>{head(ws,1);ws.views=[{state:"frozen",ySplit:1}];ws.autoFilter={from:{row:1,column:1},to:{row:1,column:ws.columnCount}};};
+  const a=wb.addWorksheet("Datos respuestas");
+  a.columns=[{header:"cuestionario",key:"cu",width:14},{header:"fecha",key:"fc",width:13,style:{numFmt:DF}},{header:"n_pregunta",key:"n",width:12},{header:"pregunta",key:"q",width:70,style:{alignment:W}},{header:"respuesta_letra",key:"l",width:16},{header:"respuesta_numero",key:"k",width:17},{header:"respuesta_texto",key:"t",width:38,style:{alignment:W}}];
+  tests.forEach(t=>t.f.items.forEach((it,i)=>a.addRow({cu:t.f.code,fc:D(t.fecha),n:num(it.n),q:it.t,l:rLet(t.f,i),k:rNum(t.f,i),t:rTxt(t.f,i)})));flat(a);
+  if(tests.some(t=>t.sc)){const y=wb.addWorksheet("Datos puntajes");
+    y.columns=[{header:"cuestionario",key:"cu",width:14},{header:"fecha",key:"fc",width:13,style:{numFmt:DF}},{header:"escala",key:"es",width:28},{header:"puntaje",key:"p",width:10},{header:"minimo",key:"mi",width:9},{header:"maximo",key:"ma",width:9},{header:"items_respondidos",key:"ir",width:18},{header:"items_de_la_escala",key:"ie",width:18},{header:"clave",key:"cl",width:44}];
+    tests.forEach(t=>{if(t.sc)t.sc.scales.forEach(e=>y.addRow({cu:t.f.code,fc:D(t.fecha),es:e.name,p:e.sum,mi:e.min,ma:e.max,ir:e.ans,ie:e.n,cl:t.key.src||"Clave sin nombre"}));});flat(y);}
   return new Blob([await wb.xlsx.writeBuffer()],{type:XLSX_MIME});
 }
 async function makePdf(fs){
@@ -828,15 +1002,18 @@ async function saveFile(filename,blob){
 /* ---------- arranque ---------- */
 (async()=>{
   TEMA=ls.get("svar.tema")||"auto";PAL=ls.get("svar.pal")||"";applyTheme();
-  const mk=location.hash.match(/^#k=([a-z0-9]{8})/),ms=location.hash.match(/^#s=([\w-]+)/);let roto=false,sinred=false,packed=null,sid="";
+  const mk=location.hash.match(/^#k=([a-z0-9]{8})(?:&p=([\w-]+))?/),ms=location.hash.match(/^#s=([\w-]+)(?:&p=([\w-]+))?/),pp=(mk&&mk[2])||(ms&&ms[2])||"";let roto=false,sinred=false,packed=null,sid="";
   if(mk){sid=mk[1];packed=ls.get("svar.k."+sid);
     if(typeof packed!=="string"){packed=null;try{const r=await fetch(API+"/f/"+sid);if(r.ok){packed=(await r.text()).trim();ls.set("svar.k."+sid,packed);}else if(r.status===404)roto=true;else sinred=true;}catch(e){sinred=true;}}}
   else if(ms){packed=ms[1];sid=hash(packed);}
   if(packed){try{const o=await unpack(packed);P={e:String(o.e||""),d:String(o.d||""),m:String(o.m||""),p:String(o.p||""),forms:(o.f||[]).map(fromWire).filter(f=>f.items.length)};if(!P.forms.length)throw 0;
-      MODE="pac";KEY="svar.p."+sid;const s=ls.get(KEY);if(s&&typeof s==="object")S=Object.assign(S,s);}catch(e){roto=true;}}
+      MODE="pac";KEY="svar.p."+sid;let who=null;if(pp){try{who=await unpack(pp);}catch(e){}}
+      if(who&&who.i){P.pid=String(who.i);P.env=String(who.x||"");P.fix=true;KEY+="."+P.pid+(P.env?"."+P.env:"");}
+      const s=ls.get(KEY);if(s&&typeof s==="object")S=Object.assign(S,s);
+      if(P.fix)S.perfil={nombre:String(who.n||""),nac:String(who.b||""),sexo:String(who.s||"")};}catch(e){roto=true;}}
   if(MODE==="pac"&&!PAL&&P.p){PAL=P.p;applyTheme();}
-  if(MODE==="pro"){const p=ls.get("svar.pro");if(p&&typeof p==="object")PRO=Object.assign(PRO,p);const d=ls.get("svar.db");if(d&&Array.isArray(d.recs))DB=await dbRead(d.recs);}
-  V={name:MODE==="pac"?(datosOk()?"inicio":"datos"):sinred?"sinred":roto?"roto":profOk()?"pro":"perfil"};render(false);
+  if(MODE==="pro"){const p=ls.get("svar.pro");if(p&&typeof p==="object")PRO=Object.assign(PRO,p);const d=ls.get("svar.db");if(d&&typeof d==="object"){["pacs","ses","env"].forEach(k=>{if(Array.isArray(d[k]))DB[k]=d[k];});const xs=await dbRead(d.res||d.recs||[]);let mig=!!d.recs;xs.forEach(x=>{if(!pac(x.pid)){attach(x);mig=true;}DB.res.push(x);});if(mig)dbSave();}}
+  V={name:MODE==="pac"?(datosOk()?"inicio":"datos"):sinred?"sinred":roto?"roto":profOk()?"panel":"perfil"};render(false);
   setTimeout(()=>{const s=document.getElementById("splash");if(s)s.remove();},1700);
 })();
 window.addEventListener("hashchange",()=>location.reload());
