@@ -401,8 +401,11 @@ const activos=()=>DB.pacs.filter(p=>p.activo!==false).sort(byName);
 const pacRecs=id=>DB.res.filter(x=>x.pid===id).map(x=>x.rec);
 /* Un mismo cuestionario puede llegar en dos PDF: si las respuestas son idénticas cuenta una sola vez. */
 function sinRepetir(recs){const seen={};return recs.map(r=>Object.assign({},r,{forms:r.forms.filter(f=>{const k=f.code+"|"+JSON.stringify(f.resp);if(seen[k])return false;seen[k]=1;return true;})})).filter(r=>r.forms.length);}
-function pacTests(id){const out=[];sinRepetir(pacRecs(id)).forEach(r=>r.forms.forEach(f=>out.push({f,fecha:f.done||r.fecha,rec:r})));
+function pacTests(id){const out=[],seen={};DB.res.filter(x=>x.pid===id).forEach(x=>x.rec.forms.forEach(f=>{const k=f.code+"|"+JSON.stringify(f.resp);if(seen[k])return;seen[k]=1;out.push({f,fecha:f.done||x.rec.fecha,rec:x.rec,rev:x.rev});}));
   return out.sort((a,b)=>a.f.code.localeCompare(b.f.code,"es")||String(a.fecha).localeCompare(String(b.fecha)));}
+const sexSel=(id,v)=>`<select id="${id}"><option value="">Elegir…</option>${["Femenino","Masculino"].map(o=>`<option${String(v||"")[0]&&o[0].toLowerCase()===String(v)[0].toLowerCase()?" selected":""}>${o}</option>`).join("")}</select>`;
+const waNum=t=>{let d=String(t||"").replace(/\D/g,"").replace(/^0+/,"");if(!d)return"";return d.startsWith("54")?d:"549"+d;};
+const sendMsg=(p,L)=>"Hola "+String(p.nombre||"").split(" ")[0]+", te mando los cuestionarios para completar desde el celular: "+L;
 /* Qué cuestionarios de un envío todavía no volvieron completos. */
 function envFalta(e){const got={};DB.res.forEach(x=>{if(x.pid!==e.pid)return;x.rec.forms.forEach(f=>{if(rCount(f)<f.items.length)return;if(x.rec.env===e.id||(!x.rec.env&&String(f.done||x.rec.fecha)>=e.fecha))got[f.code]=1;});});return e.codes.filter(c=>!got[c]);}
 const pendientes=()=>DB.env.map(e=>({e,p:pac(e.pid),falta:envFalta(e)})).filter(o=>o.p&&o.falta.length);
@@ -416,8 +419,10 @@ const fl=role=>flash?`<div class="msg" role="${role||"status"}">${flash}</div>`:
 const loadBtn=(pri,label)=>`<label class="btn ${pri?"pri":"soft"} filebtn" for="a-files">${label||"Cargar resultados (PDF)"}</label><input type="file" id="a-files" accept="application/pdf,.pdf" multiple hidden>`;
 const badBox=()=>BAD.length?`<div class="msg" role="alert">No pude leer ${BAD.length===1?"este archivo":"estos archivos"}: ${BAD.map(esc).join(", ")}. Tiene que ser el PDF original que generó Svar, sin imprimir ni volver a guardar.</div>`:"";
 const sesRow=(s,d,nom)=>`<button class="lrow" data-a="go" data-v="sesion" data-s="${esc(s.id)}"><span class="mono h">${d?esc(dlabel(s.f))+" · ":""}${esc(s.h||"--:--")}</span><span class="g">${nom?esc(pac(s.pid).nombre):esc(s.nota||"Sesión")}${nom&&s.nota?`<small>${esc(s.nota)}</small>`:""}</span><span class="ch">›</span></button>`;
-const linkBox=()=>{const L=V.link||"";return L?(V.short?`<input type="text" id="p-link" readonly aria-label="Link" class="mono" value="${esc(L)}">`:`<textarea id="p-link" readonly aria-label="Link" style="min-height:96px;word-break:break-all">${esc(L)}</textarea>`)+
-  `<div class="two"><button class="btn" data-a="cplink">Copiar link</button>${CAN_SHARE?'<button class="btn" data-a="shlink">Compartir</button>':'<button class="btn soft" data-a="openlink">Probar acá</button>'}</div>`:"";};
+const linkBox=p=>{const L=V.link||"";if(!L)return"";const m=p?encodeURIComponent(sendMsg(p,L)):"";
+  return (V.short?`<input type="text" id="p-link" readonly aria-label="Link" class="mono" value="${esc(L)}">`:`<textarea id="p-link" readonly aria-label="Link" style="min-height:96px;word-break:break-all">${esc(L)}</textarea>`)+
+  (p?`<div class="two"><a class="btn pri" target="_blank" rel="noopener" href="https://wa.me/${waNum(p.tel)}?text=${m}">Enviar por WhatsApp</a>${p.mail?`<a class="btn" href="mailto:${esc(p.mail)}?subject=${encodeURIComponent("Cuestionarios para completar")}&body=${m}">Enviar por mail</a>`:'<button class="btn soft" disabled>Sin mail en la ficha</button>'}</div>${p.tel?"":'<p class="note">La ficha no tiene teléfono: WhatsApp te va a pedir que elijas el contacto.</p>'}`:"")+
+  `<div class="two"><button class="btn soft" data-a="cplink">Copiar link</button>${CAN_SHARE?'<button class="btn soft" data-a="shlink">Compartir</button>':'<button class="btn soft" data-a="openlink">Probar acá</button>'}</div>`;};
 const libPick=()=>`<div class="opts" role="group" aria-label="Formularios para enviar">${PRO.lib.map(f=>`<button class="opt${PSEL[f.id]?" on":""}" role="checkbox" aria-checked="${!!PSEL[f.id]}" data-a="psel" data-f="${esc(f.id)}"><span class="mk"></span><span class="mono" style="font-weight:600;flex:1">${esc(f.code)}</span><span class="mono" style="font-size:12px;color:var(--muted)">${f.items.length} preg.${f.key?" · clave":""}</span></button>`).join("")}</div>`;
 
 const cut=(t,n)=>{t=String(t||"").trim();return t.length>n?t.slice(0,n).trim()+"…":t;};
@@ -468,9 +473,9 @@ function vPacientes(){
 function vPacEdit(){
   const p=pac(V.pk),d=V.d||p||{};
   const f=(id,lab,k,type,extra)=>`<p class="field"><label for="${id}">${lab}</label><input type="${type||"text"}" id="${id}" value="${esc(d[k]||"")}" ${extra||""}></p>`;
-  return bar(p?"Editar ficha":"Nuevo paciente",p?["paciente","Ficha",p.id]:["pacientes","Pacientes"])+`<main>
-    ${f("pe-nombre","Nombre y apellido","nombre","text",'autocomplete="off"')}${f("pe-nac","Fecha de nacimiento","nac","date")}${f("pe-sexo","Sexo","sexo")}
-    ${f("pe-tel","Teléfono (opcional)","tel","tel",'inputmode="tel"')}${f("pe-mail","Mail (opcional)","mail","email",'inputmode="email"')}
+  return bar(p?"Editar ficha":"Nuevo paciente",p?["paciente","Ficha",p.id]:V.ret==="forms"?["forms","Formularios"]:["pacientes","Pacientes"])+`<main>
+    ${f("pe-nombre","Nombre y apellido","nombre","text",'autocomplete="off"')}${f("pe-nac","Fecha de nacimiento","nac","date")}<p class="field"><label for="pe-sexo">Sexo</label>${sexSel("pe-sexo",d.sexo)}</p>
+    ${f("pe-tel","Celular para WhatsApp, con código de área y sin 0 ni 15 (opcional)","tel","tel",'inputmode="tel" placeholder="11 2345 6789"')}${f("pe-mail","Mail (opcional)","mail","email",'inputmode="email"')}
     <p class="field"><label for="pe-nota">Notas (opcional)</label><textarea id="pe-nota" class="ta">${esc(d.nota||"")}</textarea></p>
     <p class="note">El nombre, el nacimiento y el sexo van en los formularios que le mandes, así no los tiene que cargar.</p>
     ${fl("alert")}
@@ -483,7 +488,7 @@ function vPaciente(){
   const envs=DB.env.filter(e=>e.pid===p.id).slice().reverse(),nr=sinRev(p.id),esp=envs.filter(e=>envFalta(e).length).length;
   const srow=s=>`<button class="lrow" data-a="go" data-v="sesion" data-s="${esc(s.id)}" data-k="${esc(p.id)}"><span class="mono h">${esc(fdate(s.f))}${s.h?"<br>"+esc(s.h):""}</span><span class="g">${esc(s.nota||"Sesión")}<small class="pre">${s.txt?esc(cut(s.txt,400)):(s.f<t?"Sin notas de sesión.":"")}</small></span><span class="ch">›</span></button>`;
   const res=ts.map(t=>{const f=t.f,key=keyFor(f),sc=key?scoreForm(f,key):null,c=rCount(f);if(sc)hayClave=true;
-    return `<section class="sec"><h2><span class="tcode">${esc(f.code)}</span>${rtag((t.fecha?esc(fdate(t.fecha))+" · ":"")+c+" / "+f.items.length)}</h2>
+    return `<section class="sec"><h2><span class="tcode">${esc(f.code)}</span>${rtag((t.fecha?esc(fdate(t.fecha))+" · ":"")+c+" / "+f.items.length+" · "+(t.rev?"evaluado":'<span class="al">sin evaluar</span>'))}</h2>
       ${sc?`<table class="pts"><thead><tr><th>Escala</th><th>Puntaje</th><th>Rango</th><th>Resp.</th></tr></thead><tbody>${sc.scales.map((e,j)=>`<tr${j?"":' class="tot"'}><td>${esc(e.name)}</td><td class="mono"><b>${e.sum}</b></td><td class="mono">${e.min}–${e.max}</td><td class="mono${e.ans<e.n?" inc":""}">${e.ans}/${e.n}</td></tr>`).join("")}</tbody></table>
         ${sc.scales[0].ans<sc.scales[0].n?'<p class="note pad" style="padding-bottom:0">Hay preguntas sin responder: el puntaje suma solo las respondidas.</p>':""}
         ${key.ref?`<p class="note pad" style="padding-bottom:0">Referencia publicada: ${esc(key.ref)}</p>`:""}
@@ -508,19 +513,21 @@ function vPaciente(){
       ${ses.length?"":'<p class="note pad" style="padding-bottom:0">Sin sesiones cargadas.</p>'}
       <div class="pad"><button class="btn soft" style="width:100%" data-a="go" data-v="sesion" data-k="${esc(p.id)}">Agregar sesión</button></div></section>
     ${fl()}${badBox()}
-    <details class="sec" id="tests"${V.topen?" open":""}><summary>Tests realizados ${rtag([ts.length?ts.length+(ts.length===1?" test":" tests"):"ninguno",nr.length&&"sin evaluar",esp&&"esperando respuesta"].filter(Boolean).join(" · "))}</summary>
+    <details class="sec" id="tests"${V.topen?" open":""}><summary>Formularios y tests ${rtag([ts.length?ts.length+(ts.length===1?" respondido":" respondidos"):"ninguno respondido",nr.length&&"sin evaluar",esp&&"esperando respuesta"].filter(Boolean).join(" · "))}</summary>
       <div class="pad stack">
+        ${ts.length?"":'<p class="note">Cuando recibas el PDF de un test, cargalo desde acá o desde Inicio: Svar lo guarda en la ficha que corresponde.</p>'}
         ${ts.length&&nr.length?'<button class="btn pri" data-a="resrev">Marcar como evaluados</button>':""}
         ${ts.length?`<button class="btn soft" data-a="pacxlsx" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":"Descargar Excel"}</button>`:""}
         ${loadBtn(false,"Cargar un PDF de resultados")}
         ${hayClave?'<p class="note">Los puntajes salen de tus claves y son orientativos, sin interpretación. La lectura clínica es tuya.</p>':""}</div>
       <div class="inner">${res||""}
-        <section class="sec"><h2>Enviar formularios</h2><div class="pad stack">
-          ${PRO.lib.length?`<p class="note">Tildá los que querés mandarle. El link ya lleva sus datos.</p>${libPick()}
+        <details class="sec" id="envbox"${V.eopen?" open":""}><summary>Enviar formularios ${rtag(esp?esp+" esperando respuesta":"")}</summary><div class="pad stack">
+          ${PRO.lib.length?`<p class="note">Elegí los que querés mandarle. El link ya lleva sus datos.</p>${libPick()}
             <button class="btn pri" data-a="paclink" ${n&&!busy?"":"disabled"}>${busy==="link"?"Creando el link…":n?"Crear link con "+n+(n===1?" formulario":" formularios"):"Marcá al menos uno"}</button>
-            ${V.linkmsg?`<div class="msg" role="status">${V.linkmsg}</div>`:""}${linkBox()}`
-          :'<div class="msg">Todavía no tenés formularios. Agregalos desde Formularios.</div>'}</div>
-          ${envs.map(e=>{const fa=envFalta(e);return `<div class="lrow"><span class="g"><span class="mono">${e.codes.map(esc).join(" · ")}</span><small>Enviado el ${esc(fdate(e.fecha))} · ${fa.length?(fa.length<e.codes.length?"falta "+fa.map(esc).join(", "):"sin responder"):"recibido"}</small></span><button class="btn soft mini" data-a="envcp" data-e="${esc(e.id)}">Copiar link</button><button class="btn soft mini" data-a="envrm" data-e="${esc(e.id)}" aria-label="Quitar envío">✕</button></div>`;}).join("")}</section>
+            ${V.linkmsg?`<div class="msg" role="status">${V.linkmsg}</div>`:""}${linkBox(p)}`
+          :'<div class="msg">Todavía no tenés formularios cargados.</div>'}
+          <button class="btn soft" data-a="go" data-v="agregar">Crear o cargar un formulario</button></div>
+          ${envs.map(e=>{const fa=envFalta(e);return `<div class="lrow"><span class="g"><span class="mono">${e.codes.map(esc).join(" · ")}</span><small>Enviado el ${esc(fdate(e.fecha))} · ${fa.length?(fa.length<e.codes.length?"falta "+fa.map(esc).join(", "):"sin responder"):"recibido"}</small></span><button class="btn soft mini" data-a="envcp" data-e="${esc(e.id)}">Copiar link</button><button class="btn soft mini" data-a="envrm" data-e="${esc(e.id)}" aria-label="Quitar envío">✕</button></div>`;}).join("")}</details>
       </div></details>
     <button class="btn soft" data-a="pacarch">${p.activo===false?"Volver a activo":"Archivar paciente"}</button>
     ${V.confirm==="pac"?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="pacrm2">Sí, borrar todo</button></div>`:`<button class="btn danger" data-a="confirm" data-v="pac">Borrar ficha, notas y resultados</button>`}
@@ -544,17 +551,21 @@ function vSesion(){
 }
 function vForms(){
   const lib=PRO.lib;
+  const ps=activos(),fp=pac(V.fpk)||ps[0],n=picked().length;
   return bar("Formularios",null,lib.length||"")+`<main>
     ${fl()}
+    ${lib.length?`<section class="sec"><h2>Enviar a un paciente</h2><div class="pad stack">
+      ${libPick()}
+      ${ps.length?`<p class="field"><label for="fs-pac">Paciente</label><select id="fs-pac">${ps.map(p=>`<option value="${esc(p.id)}"${fp&&p.id===fp.id?" selected":""}>${esc(p.nombre)}</option>`).join("")}</select></p>`:'<p class="note">Todavía no hay pacientes cargados.</p>'}
+      <button class="btn soft" data-a="go" data-v="pacedit" data-r="forms">Nuevo paciente</button>
+      <button class="btn pri" data-a="paclink" ${n&&ps.length&&!busy?"":"disabled"}>${busy==="link"?"Creando el link…":n?"Crear link con "+n+(n===1?" formulario":" formularios"):"Marcá al menos un formulario"}</button>
+      ${V.linkmsg?`<div class="msg" role="status">${V.linkmsg}</div>`:""}${linkBox(pac(V.lpk))}</div></section>`:""}
     <section class="sec"><h2>Mis formularios</h2>
       ${lib.map(f=>`<button class="lrow" data-a="go" data-v="form" data-f="${esc(f.id)}"><span class="g"><span class="mono">${esc(f.code)}</span><small>${f.items.length} preguntas · ${f.key?"con clave de evaluación":"sin clave"}</small></span><span class="ch">›</span></button>`).join("")}
       <div class="pad stack">${lib.length?"":'<p class="note">Los cargás una vez y se los mandás a cualquier paciente desde su ficha.</p>'}
         <button class="btn pri" data-a="go" data-v="agregar">Agregar formulario</button>
         <div class="two"><label class="btn soft filebtn" for="p-import">Importar</label><button class="btn soft" data-a="exportlib" ${lib.length?"":"disabled"}>Exportar</button></div>
         <input type="file" id="p-import" accept="application/json,.json" hidden></div></section>
-    <section class="sec"><h2>Enviar sin ficha</h2><div class="pad stack">
-      <p class="note">Para encuestas o personas que no son pacientes: el link le pide los datos a quien responde.</p>
-      <button class="btn soft" data-a="go" data-v="abierto" ${lib.length?"":"disabled"}>Crear link abierto</button></div></section>
   </main>`;
 }
 function vHerr(){
@@ -825,7 +836,7 @@ function vDatos(){
     ${first?sender()+'<h1 class="big" style="margin-top:0">Antes de empezar, tus datos</h1><p style="margin:0">Son obligatorios: identifican tus respuestas en lo que le envíes al profesional. Se guardan solo en este teléfono.</p>':'<p class="note">Aparecen en el encabezado de lo que envíes.</p>'}
     <p class="field"><label for="f-nombre">Nombre y apellido</label><input type="text" id="f-nombre" autocomplete="name" value="${esc(p.nombre)}"></p>
     <p class="field"><label for="f-nac">Fecha de nacimiento</label><input type="date" id="f-nac" value="${esc(p.nac)}"></p>
-    <p class="field"><label for="f-sexo">Sexo</label><input type="text" id="f-sexo" value="${esc(p.sexo)}"></p>
+    <p class="field"><label for="f-sexo">Sexo</label>${sexSel("f-sexo",p.sexo)}</p>
     ${flash?`<div class="msg" role="alert">${flash}</div>`:""}
     <button class="btn pri" data-a="savedatos">${first?"Guardar y ver los cuestionarios":"Guardar"}</button>
     ${first?"":`<section class="sec"><h2>Borrar</h2><div class="pad stack">
@@ -864,7 +875,7 @@ function next(){const f=F(V.fid);if(V.i<f.items.length-1)go("q",{fid:V.fid,i:V.i
 async function copyText(t){try{await navigator.clipboard.writeText(t);return true;}catch(e){return false;}}
 const ACT={
   home(){draft=null;go(home());},
-  go(el){const d=el.dataset;if(MODE==="pro"&&(d.v==="paciente"||d.v==="abierto")&&V.name!==d.v)Object.keys(PSEL).forEach(k=>delete PSEL[k]);go(d.v,{pk:d.k||"",fid:d.f||"",sid:d.s||"",fd:d.d||"",topen:d.t==="1"});},
+  go(el){const d=el.dataset;if(MODE==="pro"&&(d.v==="paciente"||d.v==="abierto"||d.v==="forms")&&V.name!==d.v)Object.keys(PSEL).forEach(k=>delete PSEL[k]);go(d.v,{pk:d.k||"",fid:d.f||"",sid:d.s||"",fd:d.d||"",topen:d.t==="1",ret:d.r||""});},
   open(el){openForm(el.dataset.f);},
   start(){go("q",{fid:V.fid,i:0});},
   goto(el){go("q",{fid:el.dataset.f,i:+el.dataset.i});},
@@ -930,7 +941,7 @@ const ACT={
   pacsave(){const g=id=>document.getElementById(id).value.trim(),d={nombre:g("pe-nombre"),nac:g("pe-nac"),sexo:g("pe-sexo"),tel:g("pe-tel"),mail:g("pe-mail"),nota:g("pe-nota")};
     if(!d.nombre){V.d=d;flash="Falta el nombre.";render(false);return;}
     let p=pac(V.pk);if(p)Object.assign(p,d);else{p=Object.assign({id:"p"+uid(),activo:true,alta:today()},d);DB.pacs.push(p);}
-    if(!dbSave()){V.d=d;flash="No se pudo guardar en este dispositivo.";render(false);return;}go("paciente",{pk:p.id});},
+    if(!dbSave()){V.d=d;flash="No se pudo guardar en este dispositivo.";render(false);return;}if(V.ret==="forms")go("forms",{fpk:p.id});else go("paciente",{pk:p.id});},
   pacarch(){const p=pac(V.pk);if(!p)return;p.activo=p.activo===false;dbSave();flash=p.activo?"Paciente activo de nuevo.":"Paciente archivado: sale del listado y del panel, y se conserva todo.";render(false);},
   pacrm2(){const id=V.pk;DB.pacs=DB.pacs.filter(p=>p.id!==id);DB.ses=DB.ses.filter(s=>s.pid!==id);DB.env=DB.env.filter(e=>e.pid!==id);DB.res=DB.res.filter(x=>x.pid!==id);DB.tar=DB.tar.filter(x=>x.pid!==id);dbSave();go("pacientes");flash="Ficha borrada de este dispositivo.";render(false);},
   sessave(){const pid=document.getElementById("s-pac").value,f=document.getElementById("s-f").value,h=document.getElementById("s-h").value,nota=document.getElementById("s-n").value.trim();
@@ -938,8 +949,8 @@ const ACT={
     let s=V.sid&&DB.ses.find(x=>x.id===V.sid);const dur=+document.getElementById("s-d").value||50,txt=document.getElementById("s-t").value.trim();if(s)Object.assign(s,{pid,f,h,nota,dur,txt});else DB.ses.push({id:"s"+uid(),pid,f,h,nota,dur,txt});
     dbSave();if(V.pk)go("paciente",{pk:V.pk});else{CAL.d=f;go("agenda");}},
   sesrm(){DB.ses=DB.ses.filter(x=>x.id!==V.sid);dbSave();if(V.pk)go("paciente",{pk:V.pk});else go("agenda");},
-  psel(el){V.topen=true;PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.linkmsg="";flash="";render(false);},
-  async paclink(){const p=pac(V.pk),fs=picked();if(!p||!fs.length)return;busy="link";V.link="";V.linkmsg="";render(false);
+  psel(el){V.topen=V.eopen=true;const fs=document.getElementById("fs-pac");if(fs)V.fpk=fs.value;PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.linkmsg="";flash="";render(false);},
+  async paclink(){const inForms=V.name==="forms",p=pac(inForms?(document.getElementById("fs-pac")||{}).value:V.pk),fs=picked();if(!p||!fs.length)return;if(inForms)V.fpk=p.id;V.lpk=p.id;V.topen=V.eopen=true;busy="link";V.link="";V.linkmsg="";render(false);
     const packed=await pack({e:PRO.mail.trim(),d:PRO.nombre.trim(),m:(PRO.mat||"").trim(),p:PAL||"",f:fs.map(toWire)});let id="",why="";
     try{const r=await fetch(API+"/f",{method:"POST",body:packed});if(r.ok){const t=(await r.text()).trim();if(/^[a-z0-9]{8}$/.test(t))id=t;}else why=r.status===429?"limite":"";}catch(e){}
     const env={id:"e"+uid(),pid:p.id,fecha:today(),codes:fs.map(f=>f.code),link:""};
@@ -947,7 +958,7 @@ const ACT={
     const who=await pack({i:p.id,x:env.id,n:p.nombre,b:p.nac||"",s:p.sexo||""});
     env.link=BASE+(id?"#k="+id:"#s="+packed)+"&p="+who;DB.env.push(env);dbSave();
     Object.keys(PSEL).forEach(k=>delete PSEL[k]);busy="";V.short=!!id;V.link=env.link;
-    V.linkmsg=id?"Link listo. Mandáselo por el medio que usen.":(why==="limite"?"Se crearon muchos links hoy desde esta conexión. ":"No se pudo conectar para crear el link corto. ")+"Este link largo funciona igual.";render(false);},
+    V.linkmsg=id?"Link listo para "+esc(p.nombre)+".":(why==="limite"?"Se crearon muchos links hoy desde esta conexión. ":"No se pudo conectar para crear el link corto. ")+"Este link largo funciona igual.";render(false);},
   async envcp(el){const e=DB.env.find(x=>x.id===el.dataset.e);if(!e)return;const ok=await copyText(e.link);flash=ok?"Link copiado.":"No se pudo copiar.";render(false);},
   envrm(el){DB.env=DB.env.filter(x=>x.id!==el.dataset.e);dbSave();render(false);},
   async pacxlsx(){const p=pac(V.pk),recs=p?sinRepetir(pacRecs(p.id)):[];if(!recs.length)return;busy="xlsx";flash="";render(false);
@@ -964,7 +975,7 @@ const ACT={
       if(r.ok){const id=(await r.text()).trim();if(/^[a-z0-9]{8}$/.test(id))link=BASE+"#k="+id;}else why=r.status===429?"limite":"";}catch(e){}
     busy="";V.short=!!link;V.link=link||BASE+"#s="+packed;
     flash=link?"":(why==="limite"?"Se crearon muchos links hoy desde esta conexión. ":"No se pudo conectar para crear el link corto. ")+"Este link largo funciona igual.";render(false);},
-  async cplink(){const ok=await copyText(V.link);const m=ok?"Link copiado.":"No se pudo copiar solo. Mantené apretado el link y copialo.";if(V.name==="paciente")V.linkmsg=m;else flash=m;render(false);},
+  async cplink(){const ok=await copyText(V.link);const m=ok?"Link copiado.":"No se pudo copiar solo. Mantené apretado el link y copialo.";if(V.name==="paciente"||V.name==="forms")V.linkmsg=m;else flash=m;render(false);},
   async shlink(){try{await navigator.share({title:"Cuestionarios",text:"Te mando los cuestionarios para completar desde el celular:",url:V.link});}catch(e){}},
   openlink(){location.href=V.link;},
   async exportlib(){const r=await saveFile("formularios-svar.json",new Blob([JSON.stringify({svar:1,forms:PRO.lib},null,1)],{type:"application/json"}));flash=r==="saved"?"Formularios descargados, con sus claves. No incluye pacientes.":"No se pudo descargar.";render(false);},
@@ -1018,8 +1029,9 @@ async function importFile(file){let nf=0,np=0,nr=0,full=false;
   if(!nf&&!np&&!nr)return"Ese archivo no trae nada nuevo, o no es de Svar.";
   return"Se importó: "+[nf&&(nf===1?"1 formulario":nf+" formularios"),np&&(np===1?"1 paciente":np+" pacientes"),nr&&(nr===1?"1 resultado":nr+" resultados")].filter(Boolean).join(", ")+".";}
 document.addEventListener("input",e=>{if(e.target.id!=="pq")return;const q=normName(e.target.value);document.querySelectorAll(".pacrow").forEach(el=>{el.hidden=!!q&&!el.dataset.q.includes(q);});});
-document.addEventListener("toggle",e=>{if(e.target.id==="tests")V.topen=e.target.open;},true);
+document.addEventListener("toggle",e=>{if(e.target.id==="tests")V.topen=e.target.open;if(e.target.id==="envbox")V.eopen=e.target.open;},true);
 document.addEventListener("change",async e=>{
+  if(e.target.id==="fs-pac"){V.fpk=e.target.value;return;}
   if(e.target.id==="px-dx"){const p=pac(V.pk);if(p){p.dx=e.target.value.trim();const ok=dbSave(),m=document.getElementById("px-ok");if(m)m.textContent=ok?"Guardado.":"No se pudo guardar en este dispositivo.";}return;}
   if(e.target.id==="a-files"){const fl=Array.from(e.target.files||[]),xs=[];BAD=[];flash="";
     for(const f of fl){const x=await readPdfRecord(f).catch(()=>null);if(x&&x.rec.forms.length)xs.push({p:x.p,n:f.name.slice(0,120),a:today(),pid:V.name==="paciente"&&!x.rec.pid?V.pk:"",rec:x.rec});else BAD.push(f.name);}
