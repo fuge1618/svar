@@ -273,6 +273,24 @@ textarea.ta{min-height:64px;font-family:inherit;font-size:15px}
 .mc .ml{display:none}
 .mc i{display:block;font-style:normal;font-size:10px;font-family:var(--mono);background:var(--accent);color:var(--on-accent);border-radius:7px;min-width:14px;line-height:14px;text-align:center;padding:0 3px}
 }
+.ctx{border-bottom:1px solid var(--line)}
+.ctx>.lrow{border-bottom:0;padding-bottom:6px}
+.ctxb{padding:0 14px 14px 14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.ctxb p{margin:0;font-size:14px}
+.ctxb p b{display:block;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.al{color:var(--accent)!important;font-weight:600}
+.lrow .tk{font-size:12px;color:var(--muted);width:18px;text-align:center}
+.tkb{width:22px;height:22px;flex:none;border:1.5px solid var(--muted);border-radius:6px;background:none;padding:0}
+.tkb:hover{border-color:var(--accent);background:var(--accent)}
+.tnew{display:flex;gap:8px;flex-wrap:wrap}
+.tnew input[type=text]{flex:1;min-width:150px}
+.tnew input[type=date]{width:150px;flex:none}
+.lrow .pre{white-space:pre-wrap}
+.lrow .h br+*{}
+details.sec>summary::after{content:"▾";color:var(--muted);margin-left:8px}
+details.sec[open]>summary::after{content:"▴"}
+details.sec .inner{padding:0 10px 10px;display:flex;flex-direction:column;gap:12px}
+@media(min-width:900px){.shell .page{max-width:760px}.shell .page.wide{max-width:1180px}}
 </style>
 </head>
 <body>
@@ -366,10 +384,10 @@ const noStore=()=>storageOk?"":'<div class="msg">Este navegador no deja guardar 
 /* Todo lo del profesional (pacientes, sesiones, envíos y resultados) vive solo en este dispositivo, en localStorage. */
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const normName=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ");
-let DB={pacs:[],ses:[],env:[],res:[]},BAD=[],ED=null,AG={files:[],text:""};
-function dbSave(){try{localStorage.setItem("svar.db",JSON.stringify({v:2,pacs:DB.pacs,ses:DB.ses,env:DB.env,res:DB.res.map(x=>({p:x.p,n:x.n,a:x.a,pid:x.pid}))}));return true;}catch(e){return false;}}
+let DB={pacs:[],ses:[],env:[],res:[],tar:[]},BAD=[],ED=null,AG={files:[],text:""};
+function dbSave(){try{localStorage.setItem("svar.db",JSON.stringify({v:2,pacs:DB.pacs,ses:DB.ses,env:DB.env,tar:DB.tar,res:DB.res.map(x=>({p:x.p,n:x.n,a:x.a,pid:x.pid,rev:x.rev||""}))}));return true;}catch(e){return false;}}
 async function dbRead(arr){const out=[];for(const x of (Array.isArray(arr)?arr:[])){if(!x||typeof x.p!=="string"||!/^[zj][A-Za-z0-9_-]+$/.test(x.p))continue;
-  try{const rec=recordRead(await unpack(x.p));if(rec&&rec.forms.length)out.push({p:x.p,n:String(x.n||"").slice(0,120),a:String(x.a||""),pid:String(x.pid||""),rec});}catch(e){}}return out;}
+  try{const rec=recordRead(await unpack(x.p));if(rec&&rec.forms.length)out.push({p:x.p,n:String(x.n||"").slice(0,120),a:String(x.a||""),pid:String(x.pid||""),rev:String(x.rev||""),rec});}catch(e){}}return out;}
 const pac=id=>DB.pacs.find(p=>p.id===id);
 /* Un resultado se asigna a la ficha desde la que salió el link; si no trae ficha, por nombre y nacimiento; si no hay, se crea. */
 function attach(x){const r=x.rec;let p=pac(x.pid)||pac(r.pid);
@@ -402,23 +420,35 @@ const linkBox=()=>{const L=V.link||"";return L?(V.short?`<input type="text" id="
   `<div class="two"><button class="btn" data-a="cplink">Copiar link</button>${CAN_SHARE?'<button class="btn" data-a="shlink">Compartir</button>':'<button class="btn soft" data-a="openlink">Probar acá</button>'}</div>`:"";};
 const libPick=()=>`<div class="opts" role="group" aria-label="Formularios para enviar">${PRO.lib.map(f=>`<button class="opt${PSEL[f.id]?" on":""}" role="checkbox" aria-checked="${!!PSEL[f.id]}" data-a="psel" data-f="${esc(f.id)}"><span class="mk"></span><span class="mono" style="font-weight:600;flex:1">${esc(f.code)}</span><span class="mono" style="font-size:12px;color:var(--muted)">${f.items.length} preg.${f.key?" · clave":""}</span></button>`).join("")}</div>`;
 
+const cut=(t,n)=>{t=String(t||"").trim();return t.length>n?t.slice(0,n).trim()+"…":t;};
+const sinRev=id=>DB.res.filter(x=>x.pid===id&&!x.rev);
+const codesOf=xs=>[...new Set(xs.flatMap(x=>x.rec.forms.map(f=>f.code)))];
 function vPanel(){
-  const ok=s=>pac(s.pid),hoy=DB.ses.filter(s=>s.f===today()&&ok(s)).sort(sesSort),prox=DB.ses.filter(s=>s.f>today()&&ok(s)).sort(sesSort).slice(0,5),pen=pendientes(),
-    ult=DB.res.filter(x=>pac(x.pid)).sort((a,b)=>String(b.a).localeCompare(String(a.a))).slice(0,5);
-  return `<div class="brand"><button class="icon burger" data-a="nav" aria-label="Abrir menú">☰</button><span class="bm">${MARK}</span><div><div class="name">Inicio</div><div class="by">${esc(dlabel(today()))} · ${esc(PRO.nombre)}</div></div></div><main>${noStore()}
+  const t=today(),hoy=sesOf(t),pen=pendientes(),rev=activos().map(p=>({p,xs:sinRev(p.id)})).filter(o=>o.xs.length),tar=DB.tar.filter(x=>!x.done).sort((a,b)=>String(a.f||"9").localeCompare(String(b.f||"9")));
+  const ctx=s=>{const p=pac(s.pid),k=s.f+(s.h||""),prev=DB.ses.filter(x=>x.pid===p.id&&x.id!==s.id&&(x.f+(x.h||""))<k).sort(sesSort).pop(),nr=sinRev(p.id),pe=DB.env.filter(e=>e.pid===p.id&&envFalta(e).length);
+    return `<div class="ctx"><button class="lrow" data-a="go" data-v="paciente" data-k="${esc(p.id)}"><span class="mono h">${esc(s.h||"--:--")}${s.h?"–"+hfin(s):""}</span><span class="g">${esc(p.nombre)}${s.nota?`<small>${esc(s.nota)}</small>`:""}</span><span class="ch">›</span></button>
+      <div class="ctxb">${p.dx?`<p><b>Diagnóstico y notas</b>${esc(cut(p.dx,220))}</p>`:""}
+        ${prev?`<p><b>Sesión anterior · ${esc(fdate(prev.f))}</b>${esc(cut(prev.txt||prev.nota,240))||"Sin notas cargadas."}</p>`:'<p><b>Sesión anterior</b>Es la primera sesión registrada.</p>'}
+        ${nr.length?`<p><b class="al">Tests sin evaluar</b>${codesOf(nr).map(esc).join(" · ")}</p>`:""}${pe.length?`<p><b>Esperando formularios</b>${pe.flatMap(e=>envFalta(e)).map(esc).join(" · ")}</p>`:""}
+        <button class="btn soft mini" data-a="go" data-v="sesion" data-s="${esc(s.id)}">Notas de esta sesión</button></div></div>`;};
+  const n=rev.length+pen.length+tar.length;
+  return `<div class="brand"><button class="icon burger" data-a="nav" aria-label="Abrir menú">☰</button><span class="bm">${MARK}</span><div><div class="name">Inicio</div><div class="by">${esc(dlabel(t))} · ${esc(PRO.nombre)}</div></div></div><main>${noStore()}
     <div class="stats">
-      <button class="stat" data-a="go" data-v="pacientes"><b>${activos().length}</b><span>Pacientes activos</span></button>
       <button class="stat" data-a="go" data-v="agenda"><b>${hoy.length}</b><span>Sesiones hoy</span></button>
-      <div class="stat"><b>${pen.length}</b><span>Envíos sin responder</span></div>
+      <div class="stat"><b>${n}</b><span>Pendientes</span></div>
+      <button class="stat" data-a="go" data-v="pacientes"><b>${activos().length}</b><span>Pacientes activos</span></button>
     </div>
     ${fl()}${badBox()}
-    <section class="sec"><h2>Hoy ${rtag(esc(dlabel(today())))}</h2>
-      ${hoy.length?hoy.map(s=>sesRow(s,false,true)).join(""):'<p class="note pad">Sin sesiones cargadas para hoy.</p>'}
+    <section class="sec"><h2>Sesiones de hoy</h2>
+      ${hoy.length?hoy.map(ctx).join(""):'<p class="note pad" style="padding-bottom:0">Sin sesiones cargadas para hoy.</p>'}
       <div class="pad"><div class="two"><button class="btn soft" data-a="go" data-v="sesion">Agregar sesión</button><button class="btn soft" data-a="go" data-v="agenda">Ver agenda</button></div></div></section>
-    ${prox.length?`<section class="sec"><h2>Próximas sesiones</h2>${prox.map(s=>sesRow(s,true,true)).join("")}</section>`:""}
-    ${pen.length?`<section class="sec"><h2>Esperando respuesta</h2>${pen.map(o=>`<button class="lrow" data-a="go" data-v="paciente" data-k="${esc(o.p.id)}"><span class="g">${esc(o.p.nombre)}<small class="mono">${o.falta.map(esc).join(" · ")}</small></span><span class="mono h" style="min-width:0">${hace(o.e.fecha)}</span><span class="ch">›</span></button>`).join("")}</section>`:""}
-    ${ult.length?`<section class="sec"><h2>Últimos resultados</h2>${ult.map(x=>`<button class="lrow" data-a="go" data-v="paciente" data-k="${esc(x.pid)}"><span class="g">${esc(pac(x.pid).nombre)}<small class="mono">${x.rec.forms.map(f=>esc(f.code)).join(" · ")}</small></span><span class="mono h" style="min-width:0">${esc(fdate(x.a))}</span><span class="ch">›</span></button>`).join("")}</section>`:""}
-    ${loadBtn(true)}
+    <section class="sec"><h2>Pendientes ${rtag(n||"")}</h2>
+      ${rev.map(o=>`<button class="lrow" data-a="go" data-v="paciente" data-k="${esc(o.p.id)}" data-t="1"><span class="tk al">●</span><span class="g">Evaluar tests de ${esc(o.p.nombre)}<small class="mono">${codesOf(o.xs).map(esc).join(" · ")} · recibido ${hace(o.xs[0].a)}</small></span><span class="ch">›</span></button>`).join("")}
+      ${tar.map(x=>`<div class="lrow"><button class="tkb" data-a="tardone" data-t="${esc(x.id)}" aria-label="Marcar como hecha"></button><span class="g">${esc(x.t)}${x.f?`<small class="mono${x.f<t?" al":""}">${x.f<t?"vencida · ":""}${esc(dlabel(x.f))}</small>`:""}</span><button class="btn soft mini" data-a="tarrm" data-t="${esc(x.id)}" aria-label="Quitar tarea">✕</button></div>`).join("")}
+      ${pen.map(o=>`<button class="lrow" data-a="go" data-v="paciente" data-k="${esc(o.p.id)}" data-t="1"><span class="tk">○</span><span class="g">Esperando formularios de ${esc(o.p.nombre)}<small class="mono">${o.falta.map(esc).join(" · ")} · enviado ${hace(o.e.fecha)}</small></span><span class="ch">›</span></button>`).join("")}
+      ${n?"":'<p class="note pad" style="padding-bottom:0">Nada pendiente.</p>'}
+      <div class="pad stack"><div class="tnew"><input type="text" id="t-new" placeholder="Nueva tarea" aria-label="Nueva tarea"><input type="date" id="t-f" aria-label="Fecha de la tarea"><button class="btn soft mini" data-a="taradd">Agregar</button></div>
+        ${loadBtn(false,"Cargar resultados recibidos (PDF)")}</div></section>
   </main>`;
 }
 function vPacientes(){
@@ -447,9 +477,10 @@ function vPacEdit(){
   </main>`;
 }
 function vPaciente(){
-  const p=pac(V.pk);if(!p)return vPacientes();const ts=pacTests(p.id),n=picked().length;let hayClave=false;
-  const ses=DB.ses.filter(s=>s.pid===p.id).sort(sesSort),fut=ses.filter(s=>s.f>=today()),past=ses.filter(s=>s.f<today()).slice(-3).reverse();
-  const envs=DB.env.filter(e=>e.pid===p.id).slice().reverse();
+  const p=pac(V.pk);if(!p)return vPacientes();const ts=pacTests(p.id),n=picked().length,t=today();let hayClave=false;
+  const ses=DB.ses.filter(s=>s.pid===p.id).sort(sesSort),fut=ses.filter(s=>s.f>=t),past=ses.filter(s=>s.f<t).reverse();
+  const envs=DB.env.filter(e=>e.pid===p.id).slice().reverse(),nr=sinRev(p.id),esp=envs.filter(e=>envFalta(e).length).length;
+  const srow=s=>`<button class="lrow" data-a="go" data-v="sesion" data-s="${esc(s.id)}" data-k="${esc(p.id)}"><span class="mono h">${esc(fdate(s.f))}${s.h?"<br>"+esc(s.h):""}</span><span class="g">${esc(s.nota||"Sesión")}<small class="pre">${s.txt?esc(cut(s.txt,400)):(s.f<t?"Sin notas de sesión.":"")}</small></span><span class="ch">›</span></button>`;
   const res=ts.map(t=>{const f=t.f,key=keyFor(f),sc=key?scoreForm(f,key):null,c=rCount(f);if(sc)hayClave=true;
     return `<section class="sec"><h2><span class="tcode">${esc(f.code)}</span>${rtag((t.fecha?esc(fdate(t.fecha))+" · ":"")+c+" / "+f.items.length)}</h2>
       ${sc?`<table class="pts"><thead><tr><th>Escala</th><th>Puntaje</th><th>Rango</th><th>Resp.</th></tr></thead><tbody>${sc.scales.map((e,j)=>`<tr${j?"":' class="tot"'}><td>${esc(e.name)}</td><td class="mono"><b>${e.sum}</b></td><td class="mono">${e.min}–${e.max}</td><td class="mono${e.ans<e.n?" inc":""}">${e.ans}/${e.n}</td></tr>`).join("")}</tbody></table>
@@ -464,26 +495,34 @@ function vPaciente(){
           return `<tr><td class="n">${esc(it.n)}</td><td>${esc(it.t)}<span class="ans${a?"":" none"}">${a?esc(a):"Sin responder"}</span></td>${sc?`<td class="n" style="text-align:right">${pt==null?"":pt}</td>`:""}</tr>`;}).join("")}</tbody></table>
       </details></section>`;}).join("");
   return bar(esc(p.nombre),["pacientes","Pacientes"])+`<main>
-    <section class="sec"><h2>Ficha${p.activo===false?rtag("archivado"):""}</h2><div class="pad stack">
-      <dl class="datos"><dt>Nacimiento</dt><dd>${esc(fdate(p.nac))||"—"}</dd><dt>Sexo</dt><dd>${esc(p.sexo)||"—"}</dd>${p.tel?`<dt>Teléfono</dt><dd>${esc(p.tel)}</dd>`:""}${p.mail?`<dt>Mail</dt><dd>${esc(p.mail)}</dd>`:""}${p.nota?`<dt>Notas</dt><dd style="white-space:pre-wrap">${esc(p.nota)}</dd>`:""}</dl>
-      <button class="btn soft" data-a="go" data-v="pacedit" data-k="${esc(p.id)}">Editar ficha</button></div></section>
-    <section class="sec"><h2>Sesiones</h2>
-      ${fut.map(s=>sesRow(s,true,false)).join("")}${past.length?`<p class="note pad" style="padding-bottom:0">Anteriores</p>`+past.map(s=>sesRow(s,true,false)).join(""):""}
+    <section class="sec"><h2>Datos${p.activo===false?rtag("archivado"):""}</h2><div class="pad stack">
+      <dl class="datos"><dt>Nacimiento</dt><dd>${esc(fdate(p.nac))||"—"}</dd><dt>Sexo</dt><dd>${esc(p.sexo)||"—"}</dd>${p.tel?`<dt>Teléfono</dt><dd>${esc(p.tel)}</dd>`:""}${p.mail?`<dt>Mail</dt><dd>${esc(p.mail)}</dd>`:""}${p.nota?`<dt>Otros datos</dt><dd style="white-space:pre-wrap">${esc(p.nota)}</dd>`:""}</dl>
+      <button class="btn soft" data-a="go" data-v="pacedit" data-k="${esc(p.id)}">Editar datos</button></div></section>
+    <section class="sec"><h2>Diagnóstico y notas generales</h2><div class="pad stack">
+      <textarea id="px-dx" class="ta" style="min-height:110px" placeholder="Diagnósticos, medicación, antecedentes, objetivos del tratamiento…" aria-label="Diagnóstico y notas generales">${esc(p.dx||"")}</textarea>
+      <p class="note" id="px-ok">Se guarda solo al salir del cuadro.</p></div></section>
+    <section class="sec"><h2>Sesiones ${rtag(ses.length||"")}</h2>
+      ${fut.length?`<p class="note pad" style="padding-bottom:0">Próximas</p>`+fut.map(srow).join(""):""}
+      ${past.length?`<p class="note pad" style="padding-bottom:0">Historial y notas de sesión</p>`+past.slice(0,V.allses?999:5).map(srow).join("")+(past.length>5&&!V.allses?`<div class="pad" style="padding-bottom:0"><button class="btn soft mini" data-a="allses">Ver las ${past.length} sesiones</button></div>`:""):""}
       ${ses.length?"":'<p class="note pad" style="padding-bottom:0">Sin sesiones cargadas.</p>'}
       <div class="pad"><button class="btn soft" style="width:100%" data-a="go" data-v="sesion" data-k="${esc(p.id)}">Agregar sesión</button></div></section>
-    <section class="sec"><h2>Enviar formularios</h2><div class="pad stack">
-      ${PRO.lib.length?`<p class="note">Tildá los que querés mandarle. El link ya lleva sus datos.</p>${libPick()}
-        <button class="btn pri" data-a="paclink" ${n&&!busy?"":"disabled"}>${busy==="link"?"Creando el link…":n?"Crear link con "+n+(n===1?" formulario":" formularios"):"Marcá al menos uno"}</button>
-        ${V.linkmsg?`<div class="msg" role="status">${V.linkmsg}</div>`:""}${linkBox()}`
-      :'<div class="msg">Todavía no tenés formularios. Agregalos desde Formularios.</div>'}</div>
-      ${envs.map(e=>{const fa=envFalta(e);return `<div class="lrow"><span class="g"><span class="mono">${e.codes.map(esc).join(" · ")}</span><small>Enviado el ${esc(fdate(e.fecha))} · ${fa.length?(fa.length<e.codes.length?"falta "+fa.map(esc).join(", "):"sin responder"):"recibido"}</small></span><button class="btn soft mini" data-a="envcp" data-e="${esc(e.id)}">Copiar link</button><button class="btn soft mini" data-a="envrm" data-e="${esc(e.id)}" aria-label="Quitar envío">✕</button></div>`;}).join("")}</section>
-    ${res||'<div class="msg">Todavía no hay resultados de este paciente.</div>'}
-    ${hayClave?'<p class="note">Los puntajes salen de tus claves y son orientativos, sin interpretación. La lectura clínica es tuya.</p>':""}
     ${fl()}${badBox()}
-    ${ts.length?`<button class="btn pri" data-a="pacxlsx" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":"Descargar Excel"}</button>`:""}
-    ${loadBtn(false,"Cargar un PDF de resultados")}
+    <details class="sec" id="tests"${V.topen?" open":""}><summary>Tests realizados ${rtag([ts.length?ts.length+(ts.length===1?" test":" tests"):"ninguno",nr.length&&"sin evaluar",esp&&"esperando respuesta"].filter(Boolean).join(" · "))}</summary>
+      <div class="pad stack">
+        ${ts.length&&nr.length?'<button class="btn pri" data-a="resrev">Marcar como evaluados</button>':""}
+        ${ts.length?`<button class="btn soft" data-a="pacxlsx" ${busy?"disabled":""}>${busy==="xlsx"?"Armando el Excel…":"Descargar Excel"}</button>`:""}
+        ${loadBtn(false,"Cargar un PDF de resultados")}
+        ${hayClave?'<p class="note">Los puntajes salen de tus claves y son orientativos, sin interpretación. La lectura clínica es tuya.</p>':""}</div>
+      <div class="inner">${res||""}
+        <section class="sec"><h2>Enviar formularios</h2><div class="pad stack">
+          ${PRO.lib.length?`<p class="note">Tildá los que querés mandarle. El link ya lleva sus datos.</p>${libPick()}
+            <button class="btn pri" data-a="paclink" ${n&&!busy?"":"disabled"}>${busy==="link"?"Creando el link…":n?"Crear link con "+n+(n===1?" formulario":" formularios"):"Marcá al menos uno"}</button>
+            ${V.linkmsg?`<div class="msg" role="status">${V.linkmsg}</div>`:""}${linkBox()}`
+          :'<div class="msg">Todavía no tenés formularios. Agregalos desde Formularios.</div>'}</div>
+          ${envs.map(e=>{const fa=envFalta(e);return `<div class="lrow"><span class="g"><span class="mono">${e.codes.map(esc).join(" · ")}</span><small>Enviado el ${esc(fdate(e.fecha))} · ${fa.length?(fa.length<e.codes.length?"falta "+fa.map(esc).join(", "):"sin responder"):"recibido"}</small></span><button class="btn soft mini" data-a="envcp" data-e="${esc(e.id)}">Copiar link</button><button class="btn soft mini" data-a="envrm" data-e="${esc(e.id)}" aria-label="Quitar envío">✕</button></div>`;}).join("")}</section>
+      </div></details>
     <button class="btn soft" data-a="pacarch">${p.activo===false?"Volver a activo":"Archivar paciente"}</button>
-    ${V.confirm==="pac"?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="pacrm2">Sí, borrar todo</button></div>`:`<button class="btn danger" data-a="confirm" data-v="pac">Borrar ficha y resultados</button>`}
+    ${V.confirm==="pac"?`<div class="two"><button class="btn soft" data-a="cancel">Cancelar</button><button class="btn" data-a="pacrm2">Sí, borrar todo</button></div>`:`<button class="btn danger" data-a="confirm" data-v="pac">Borrar ficha, notas y resultados</button>`}
   </main>`;
 }
 function vSesion(){
@@ -495,7 +534,8 @@ function vSesion(){
     <p class="field"><label for="s-f">Fecha</label><input type="date" id="s-f" value="${esc(s?s.f:V.fd||today())}"></p>
     <div class="two"><p class="field"><label for="s-h">Hora</label><input type="time" id="s-h" value="${esc(s?s.h:"")}"></p>
       <p class="field"><label for="s-d">Duración</label><select id="s-d">${[30,45,50,60,90].map(m=>`<option value="${m}"${(s&&s.dur||50)===m?" selected":""}>${m} min</option>`).join("")}</select></p></div>
-    <p class="field"><label for="s-n">Nota (opcional)</label><input type="text" id="s-n" value="${esc(s?s.nota:"")}"></p>
+    <p class="field"><label for="s-n">Motivo o título (opcional)</label><input type="text" id="s-n" value="${esc(s?s.nota:"")}"></p>
+    <p class="field"><label for="s-t">Notas de la sesión</label><textarea id="s-t" class="ta" style="min-height:180px">${esc(s&&s.txt||"")}</textarea></p>
     ${fl("alert")}
     <button class="btn pri" data-a="sessave">Guardar</button>
     ${s?`<button class="btn soft" data-a="go" data-v="paciente" data-k="${esc(s.pid)}">Ver ficha</button><button class="btn danger" data-a="sesrm">Quitar sesión</button>`:""}
@@ -821,7 +861,7 @@ function next(){const f=F(V.fid);if(V.i<f.items.length-1)go("q",{fid:V.fid,i:V.i
 async function copyText(t){try{await navigator.clipboard.writeText(t);return true;}catch(e){return false;}}
 const ACT={
   home(){draft=null;go(home());},
-  go(el){const d=el.dataset;if(MODE==="pro"&&(d.v==="paciente"||d.v==="abierto")&&V.name!==d.v)Object.keys(PSEL).forEach(k=>delete PSEL[k]);go(d.v,{pk:d.k||"",fid:d.f||"",sid:d.s||"",fd:d.d||""});},
+  go(el){const d=el.dataset;if(MODE==="pro"&&(d.v==="paciente"||d.v==="abierto")&&V.name!==d.v)Object.keys(PSEL).forEach(k=>delete PSEL[k]);go(d.v,{pk:d.k||"",fid:d.f||"",sid:d.s||"",fd:d.d||"",topen:d.t==="1"});},
   open(el){openForm(el.dataset.f);},
   start(){go("q",{fid:V.fid,i:0});},
   goto(el){go("q",{fid:el.dataset.f,i:+el.dataset.i});},
@@ -851,6 +891,11 @@ const ACT={
   async cpmail(){const ok=await copyText(P.e);flash=ok?"Mail copiado.":"No se pudo copiar. Mantené apretada la dirección para copiarla.";render(false);},
   /* profesional */
   confirm(el){V.confirm=el.dataset.v;render(false);},
+  taradd(){const e=document.getElementById("t-new"),t=e.value.trim();if(!t){e.focus();return;}DB.tar.push({id:"t"+uid(),t:t.slice(0,200),f:document.getElementById("t-f").value||"",done:""});dbSave();render(false);},
+  tardone(el){const x=DB.tar.find(y=>y.id===el.dataset.t);if(x){x.done=today();dbSave();}render(false);},
+  tarrm(el){DB.tar=DB.tar.filter(y=>y.id!==el.dataset.t);dbSave();render(false);},
+  resrev(){DB.res.forEach(x=>{if(x.pid===V.pk&&!x.rev)x.rev=today();});dbSave();V.topen=true;flash="Tests marcados como evaluados.";render(false);},
+  allses(){V.allses=true;render(false);},
   nav(){NAVOPEN=!NAVOPEN;document.getElementById("app").classList.toggle("open",NAVOPEN);},
   calnav(el){const k=+el.dataset.v;if(CAL.mode==="sem")CAL.d=dAdd(CAL.d,7*k);else{const d=new Date(CAL.d.slice(0,7)+"-01T12:00:00");d.setMonth(d.getMonth()+k);CAL.d=dISO(d);}render(false);},
   calhoy(){CAL.d=today();render(false);},
@@ -861,13 +906,13 @@ const ACT={
     let p=pac(V.pk);if(p)Object.assign(p,d);else{p=Object.assign({id:"p"+uid(),activo:true,alta:today()},d);DB.pacs.push(p);}
     if(!dbSave()){V.d=d;flash="No se pudo guardar en este dispositivo.";render(false);return;}go("paciente",{pk:p.id});},
   pacarch(){const p=pac(V.pk);if(!p)return;p.activo=p.activo===false;dbSave();flash=p.activo?"Paciente activo de nuevo.":"Paciente archivado: sale del listado y del panel, y se conserva todo.";render(false);},
-  pacrm2(){const id=V.pk;DB.pacs=DB.pacs.filter(p=>p.id!==id);DB.ses=DB.ses.filter(s=>s.pid!==id);DB.env=DB.env.filter(e=>e.pid!==id);DB.res=DB.res.filter(x=>x.pid!==id);dbSave();go("pacientes");flash="Ficha borrada de este dispositivo.";render(false);},
+  pacrm2(){const id=V.pk;DB.pacs=DB.pacs.filter(p=>p.id!==id);DB.ses=DB.ses.filter(s=>s.pid!==id);DB.env=DB.env.filter(e=>e.pid!==id);DB.res=DB.res.filter(x=>x.pid!==id);DB.tar=DB.tar.filter(x=>x.pid!==id);dbSave();go("pacientes");flash="Ficha borrada de este dispositivo.";render(false);},
   sessave(){const pid=document.getElementById("s-pac").value,f=document.getElementById("s-f").value,h=document.getElementById("s-h").value,nota=document.getElementById("s-n").value.trim();
     if(!f){flash="Falta la fecha.";render(false);return;}
-    let s=V.sid&&DB.ses.find(x=>x.id===V.sid);const dur=+document.getElementById("s-d").value||50;if(s)Object.assign(s,{pid,f,h,nota,dur});else DB.ses.push({id:"s"+uid(),pid,f,h,nota,dur});
+    let s=V.sid&&DB.ses.find(x=>x.id===V.sid);const dur=+document.getElementById("s-d").value||50,txt=document.getElementById("s-t").value.trim();if(s)Object.assign(s,{pid,f,h,nota,dur,txt});else DB.ses.push({id:"s"+uid(),pid,f,h,nota,dur,txt});
     dbSave();if(V.pk)go("paciente",{pk:V.pk});else{CAL.d=f;go("agenda");}},
   sesrm(){DB.ses=DB.ses.filter(x=>x.id!==V.sid);dbSave();if(V.pk)go("paciente",{pk:V.pk});else go("agenda");},
-  psel(el){PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.linkmsg="";flash="";render(false);},
+  psel(el){V.topen=true;PSEL[el.dataset.f]=!PSEL[el.dataset.f];V.link="";V.linkmsg="";flash="";render(false);},
   async paclink(){const p=pac(V.pk),fs=picked();if(!p||!fs.length)return;busy="link";V.link="";V.linkmsg="";render(false);
     const packed=await pack({e:PRO.mail.trim(),d:PRO.nombre.trim(),m:(PRO.mat||"").trim(),p:PAL||"",f:fs.map(toWire)});let id="",why="";
     try{const r=await fetch(API+"/f",{method:"POST",body:packed});if(r.ok){const t=(await r.text()).trim();if(/^[a-z0-9]{8}$/.test(t))id=t;}else why=r.status===429?"limite":"";}catch(e){}
@@ -884,8 +929,8 @@ const ACT={
       const r=await saveFile((clean(p.nombre)||"Paciente")+" - "+today()+".xlsx",await makeXlsx(p,recs));flash=r==="saved"?"Excel listo. Buscalo en tus descargas.":"No se pudo descargar.";}
     catch(e){flash="No se pudo armar el Excel. Revisá la conexión e intentá de nuevo.";}
     busy="";render(false);},
-  dbwipe2(){DB={pacs:[],ses:[],env:[],res:[]};BAD=[];try{localStorage.removeItem("svar.db");}catch(e){}V.confirm="";flash="Se borraron pacientes, sesiones y resultados de este dispositivo.";render(false);},
-  async dbexport(){const r=await saveFile("respaldo-svar-"+today()+".json",new Blob([JSON.stringify({svar:1,tipo:"respaldo",fecha:today(),forms:PRO.lib,db:{pacs:DB.pacs,ses:DB.ses,env:DB.env,res:DB.res.map(x=>({p:x.p,n:x.n,a:x.a,pid:x.pid}))}})],{type:"application/json"}));
+  dbwipe2(){DB={pacs:[],ses:[],env:[],res:[],tar:[]};BAD=[];try{localStorage.removeItem("svar.db");}catch(e){}V.confirm="";flash="Se borraron pacientes, sesiones y resultados de este dispositivo.";render(false);},
+  async dbexport(){const r=await saveFile("respaldo-svar-"+today()+".json",new Blob([JSON.stringify({svar:1,tipo:"respaldo",fecha:today(),forms:PRO.lib,db:{pacs:DB.pacs,ses:DB.ses,env:DB.env,tar:DB.tar,res:DB.res.map(x=>({p:x.p,n:x.n,a:x.a,pid:x.pid,rev:x.rev||""}))}})],{type:"application/json"}));
     flash=r==="saved"?"Respaldo descargado. Contiene datos de tus pacientes: guardalo en un lugar seguro.":"No se pudo descargar.";render(false);},
   async mklink(){const fs=picked();if(!fs.length)return;busy="link";flash="";V.link="";render(false);
     const packed=await pack({e:PRO.mail.trim(),d:PRO.nombre.trim(),m:(PRO.mat||"").trim(),p:PAL||"",f:fs.map(toWire)});let link="",why="";
@@ -938,22 +983,24 @@ async function filePart(file){
   const u=new Uint8Array(await file.arrayBuffer());let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return{mime:"application/pdf",data:btoa(s)};}
 async function importFile(file){let nf=0,np=0,nr=0,full=false;
   try{const o=JSON.parse(await file.text()),arr=Array.isArray(o)?o:(o&&o.forms)||[];const fs=arr.map(x=>normalize([x])).filter(Boolean);nf=fs.length;if(nf){addToLib(fs);save();}
-    const d=o&&o.db,back=JSON.stringify({pacs:DB.pacs,ses:DB.ses,env:DB.env}),backRes=DB.res.slice();
+    const d=o&&o.db,back=JSON.stringify({pacs:DB.pacs,ses:DB.ses,env:DB.env,tar:DB.tar}),backRes=DB.res.slice();
     if(d&&typeof d==="object"){const merge=(k,ok)=>(Array.isArray(d[k])?d[k]:[]).forEach(x=>{if(x&&x.id&&ok(x)&&!DB[k].some(y=>y.id===x.id)){DB[k].push(x);if(k==="pacs")np++;}});
-      merge("pacs",x=>typeof x.nombre==="string");merge("ses",x=>typeof x.f==="string");merge("env",x=>Array.isArray(x.codes));}
+      merge("pacs",x=>typeof x.nombre==="string");merge("ses",x=>typeof x.f==="string");merge("env",x=>Array.isArray(x.codes));merge("tar",x=>typeof x.t==="string");}
     const xs=await dbRead((d&&d.res)||(o&&o.pacientes)||[]);xs.forEach(x=>{if(DB.res.some(y=>y.p===x.p))return;const n0=DB.pacs.length;attach(x);if(DB.pacs.length>n0)np++;DB.res.push(x);nr++;});
-    if((np||nr||d)&&!dbSave()){const b=JSON.parse(back);DB.pacs=b.pacs;DB.ses=b.ses;DB.env=b.env;DB.res=backRes;full=true;}}catch(err){}
+    if((np||nr||d)&&!dbSave()){const b=JSON.parse(back);DB.pacs=b.pacs;DB.ses=b.ses;DB.env=b.env;DB.tar=b.tar;DB.res=backRes;full=true;}}catch(err){}
   if(full)return"No queda espacio en este navegador para guardar ese respaldo.";
   if(!nf&&!np&&!nr)return"Ese archivo no trae nada nuevo, o no es de Svar.";
   return"Se importó: "+[nf&&(nf===1?"1 formulario":nf+" formularios"),np&&(np===1?"1 paciente":np+" pacientes"),nr&&(nr===1?"1 resultado":nr+" resultados")].filter(Boolean).join(", ")+".";}
 document.addEventListener("input",e=>{if(e.target.id!=="pq")return;const q=normName(e.target.value);document.querySelectorAll(".pacrow").forEach(el=>{el.hidden=!!q&&!el.dataset.q.includes(q);});});
+document.addEventListener("toggle",e=>{if(e.target.id==="tests")V.topen=e.target.open;},true);
 document.addEventListener("change",async e=>{
+  if(e.target.id==="px-dx"){const p=pac(V.pk);if(p){p.dx=e.target.value.trim();const ok=dbSave(),m=document.getElementById("px-ok");if(m)m.textContent=ok?"Guardado.":"No se pudo guardar en este dispositivo.";}return;}
   if(e.target.id==="a-files"){const fl=Array.from(e.target.files||[]),xs=[];BAD=[];flash="";
     for(const f of fl){const x=await readPdfRecord(f).catch(()=>null);if(x&&x.rec.forms.length)xs.push({p:x.p,n:f.name.slice(0,120),a:today(),pid:V.name==="paciente"&&!x.rec.pid?V.pk:"",rec:x.rec});else BAD.push(f.name);}
     e.target.value="";const who=dbAdd(xs);
     if(!who)flash="No queda espacio en este navegador para guardar más resultados. Exportá un respaldo y borrá fichas que ya no necesites.";
     else if(xs.length){const names=[...new Set(who.map(p=>p.nombre))];flash=who.length?(who.length===1?"Se guardó 1 PDF":"Se guardaron "+who.length+" PDF")+" en "+(names.length===1?"la ficha de ":"las fichas de ")+esc(names.join(", "))+"."+(who.length<xs.length?" Los demás ya estaban cargados.":""):"Esos PDF ya estaban cargados.";}
-    render(false);return;}
+    if(V.name==="paciente")V.topen=true;render(false);return;}
   if(e.target.id==="ag-files"){agRead();Array.from(e.target.files||[]).forEach(f=>{if(/^image\/|pdf$/.test(f.type))AG.files.push(f);});e.target.value="";flash="";render(false);return;}
   if(e.target.id!=="p-import"&&e.target.id!=="d-import")return;const file=e.target.files&&e.target.files[0];if(!file)return;
   flash=await importFile(file);e.target.value="";render(false);});
@@ -1126,7 +1173,7 @@ async function saveFile(filename,blob){
       const s=ls.get(KEY);if(s&&typeof s==="object")S=Object.assign(S,s);
       if(P.fix)S.perfil={nombre:String(who.n||""),nac:String(who.b||""),sexo:String(who.s||"")};}catch(e){roto=true;}}
   if(MODE==="pac"&&!PAL&&P.p){PAL=P.p;applyTheme();}
-  if(MODE==="pro"){const p=ls.get("svar.pro");if(p&&typeof p==="object")PRO=Object.assign(PRO,p);const d=ls.get("svar.db");if(d&&typeof d==="object"){["pacs","ses","env"].forEach(k=>{if(Array.isArray(d[k]))DB[k]=d[k];});const xs=await dbRead(d.res||d.recs||[]);let mig=!!d.recs;xs.forEach(x=>{if(!pac(x.pid)){attach(x);mig=true;}DB.res.push(x);});if(mig)dbSave();}}
+  if(MODE==="pro"){const p=ls.get("svar.pro");if(p&&typeof p==="object")PRO=Object.assign(PRO,p);const d=ls.get("svar.db");if(d&&typeof d==="object"){["pacs","ses","env","tar"].forEach(k=>{if(Array.isArray(d[k]))DB[k]=d[k];});const xs=await dbRead(d.res||d.recs||[]);let mig=!!d.recs;xs.forEach(x=>{if(!pac(x.pid)){attach(x);mig=true;}DB.res.push(x);});if(mig)dbSave();}}
   V={name:MODE==="pac"?(datosOk()?"inicio":"datos"):sinred?"sinred":roto?"roto":profOk()?"panel":"perfil"};render(false);
   setTimeout(()=>{const s=document.getElementById("splash");if(s)s.remove();},1700);
 })();
